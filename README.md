@@ -13,9 +13,8 @@ uv add pretty-mod
 ```python
 from pretty_mod.explorer import ModuleTreeExplorer
 
-# Explore a module structure
+# Explore a module structure  
 explorer = ModuleTreeExplorer("json", max_depth=2)
-explorer.explore()
 print(explorer.get_tree_string())
 ```
 

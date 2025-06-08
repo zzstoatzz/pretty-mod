@@ -13,11 +13,7 @@ def explore_json_module():
     print("=" * 50)
 
     explorer = ModuleTreeExplorer("json", max_depth=2)
-    explorer.explore()
-
-    # Display the tree structure
-    tree_string = explorer.get_tree_string()
-    print(tree_string)
+    print(explorer.get_tree_string())
     print()
 
 
@@ -68,14 +64,12 @@ def explore_custom_depth():
     # Shallow exploration
     print("Shallow exploration (depth=1):")
     explorer_shallow = ModuleTreeExplorer("urllib", max_depth=1)
-    explorer_shallow.explore()
     print(explorer_shallow.get_tree_string())
     print()
 
     # Deeper exploration
     print("Deeper exploration (depth=2):")
     explorer_deep = ModuleTreeExplorer("urllib", max_depth=2)
-    explorer_deep.explore()
     print(explorer_deep.get_tree_string())
     print()
 

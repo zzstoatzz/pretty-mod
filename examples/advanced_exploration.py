@@ -180,7 +180,6 @@ def interactive_exploration():
     print("Let's run this pattern on the 'pathlib' module:")
     try:
         explorer = ModuleTreeExplorer("pathlib", max_depth=1)
-        explorer.explore()
         print(explorer.get_tree_string())
     except Exception as e:
         print(f"Could not explore pathlib: {e}")

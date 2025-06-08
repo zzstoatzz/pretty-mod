@@ -194,7 +194,6 @@ class TestIntegration:
         assert len(tree_string) > 0
 
 
-# Edge case and error handling tests
 class TestErrorHandling:
     @patch("pretty_mod.explorer.importlib.import_module")
     def test_explore_with_import_failure(self, mock_import, capsys):
@@ -211,3 +210,14 @@ class TestErrorHandling:
 
         result = explorer.get_tree_string()
         assert "📦 test" in result
+
+    def test_get_tree_string_auto_explores(self):
+        """Test that get_tree_string() automatically calls explore() if needed."""
+        explorer = ModuleTreeExplorer("json", max_depth=1)
+
+        # Should auto-explore when get_tree_string is called
+        result = explorer.get_tree_string()
+
+        # Verify it worked
+        assert "📦 json" in result
+        assert explorer.tree  # Tree should now be populated

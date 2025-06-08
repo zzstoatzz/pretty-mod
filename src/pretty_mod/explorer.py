@@ -157,6 +157,8 @@ class ModuleTreeExplorer:
         """
         lines = []
         if tree is None:
+            if not self.tree:
+                self.explore()
             tree = self.tree
             lines.append(f"📦 {self.root_module_path}")
 
