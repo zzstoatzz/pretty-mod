@@ -64,6 +64,20 @@ print(display_signature("json:loads"))
 ```
 </details>
 
+## CLI
+
+Pretty-mod includes a command-line interface for quick exploration:
+
+```bash
+# Explore module structure
+pretty-mod tree json
+pretty-mod tree requests --depth 3
+
+# Display function signatures  
+pretty-mod sig json:loads
+pretty-mod sig os.path:join
+```
+
 ## Examples
 
 See the [`examples/`](examples/) directory for more detailed usage patterns and advanced features.

@@ -7,6 +7,9 @@ requires-python = ">=3.10"
 dynamic = ["version"]
 dependencies = []
 
+[project.scripts]
+pretty-mod = "pretty_mod.cli:main"
+
 [dependency-groups]
 dev = ["pytest-sugar", "ruff", "ty", "ipython", "pre-commit"]
 
