@@ -108,6 +108,11 @@ pretty-mod tree requests --depth 3
 # Display function signatures  
 pretty-mod sig json:loads
 pretty-mod sig os.path:join
+
+# inspect libraries you don't have installed
+uvx --with fastapi pretty-mod tree fastapi.routing
+
+uvx --with fastapi pretty-mod sig fastapi.routing:run_endpoint_function
 ```
 
 ## Examples
