@@ -1,3 +1,47 @@
+# Release Notes - v0.1.0-alpha.1
+
+## 🐛 Bug Fixes
+
+### Signature Display Fixes
+- **Fixed critical comma-splitting bug** in type annotations - `Dict[str, Any]` no longer gets split across multiple lines
+- **Improved parameter formatting** to match Python syntax more closely:
+  - `*args` and `**kwargs` now display with proper asterisk prefixes
+  - Keyword-only parameters separated with `*` line instead of verbose `(keyword-only)` text
+  - Default values formatted as `param=value` instead of `param = value`
+- **Better type annotation filtering** - now shows `typing.Dict[str, Any]` instead of hiding all typing annotations
+- **Preserved return type information** that was present in pre-0.1 versions
+
+### Examples
+**Before (broken):**
+```
+├── values: Dict[str
+├── Any]
+```
+
+**After (fixed):**
+```
+├── values: typing.Dict[str, typing.Any]
+```
+
+**Parameter display improvements:**
+```
+# Old format:
+├── skipkeys = False (keyword-only)
+└── kw (**kwargs)
+
+# New format:  
+├── *
+├── skipkeys=False
+└── **kw
+```
+
+## ✅ Verification
+- All README examples tested and working correctly
+- Signature parsing now properly handles complex type annotations
+- Tree exploration functionality unchanged
+
+---
+
 # Release Notes - v0.1.0-alpha
 
 ## Overview

@@ -54,30 +54,98 @@ fn display_signature(py: Python, import_path: &str) -> PyResult<String> {
             
             // Build the formatted output
             let mut result = format!("📎 {}\n", func_name);
+            result.push_str("├── Parameters:\n");
             
-            // Simple parsing - just show the signature with Parameters: prefix
-            if sig_str.contains('(') && sig_str.contains(')') {
-                result.push_str("├── Parameters:\n");
+            // Get parameters from signature
+            let params_obj = sig.getattr("parameters")?;
+            let params_values = params_obj.call_method0("values")?;
+            let builtins = py.import("builtins")?;
+            let params_list: Vec<PyObject> = builtins.getattr("list")?.call1((params_values,))?.extract()?;
+            
+            if params_list.is_empty() {
+                result.push_str("└── (no parameters)");
+            } else {
+                let mut has_seen_keyword_only_separator = false;
                 
-                // Extract parameters from signature string
-                let params_start = sig_str.find('(').unwrap_or(0) + 1;
-                let params_end = sig_str.rfind(')').unwrap_or(sig_str.len());
-                let params_str = &sig_str[params_start..params_end];
-                
-                if !params_str.is_empty() {
-                    let params: Vec<&str> = params_str.split(", ").collect();
-                    for (i, param) in params.iter().enumerate() {
-                        if i == params.len() - 1 {
-                            result.push_str(&format!("└── {}", param));
-                        } else {
-                            result.push_str(&format!("├── {}\n", param));
+                for (i, param) in params_list.iter().enumerate() {
+                    let is_last = i == params_list.len() - 1;
+                    let param_bound = param.bind(py);
+                    
+                    // Get parameter properties
+                    let name: String = param_bound.getattr("name")?.extract()?;
+                    let kind = param_bound.getattr("kind")?;
+                    let default = param_bound.getattr("default")?;
+                    let annotation = param_bound.getattr("annotation")?;
+                    
+                    // Get kind name
+                    let kind_name: String = kind.getattr("name")?.extract()?;
+                    
+                    // Handle positional-only separator
+                    if kind_name == "POSITIONAL_ONLY" && i < params_list.len() - 1 {
+                        // Check if next param is not POSITIONAL_ONLY
+                        let next_param = params_list[i + 1].bind(py);
+                        let next_kind = next_param.getattr("kind")?;
+                        let next_kind_name: String = next_kind.getattr("name")?.extract()?;
+                        if next_kind_name != "POSITIONAL_ONLY" {
+                            result.push_str("├── /\n");
                         }
                     }
-                } else {
-                    result.push_str("└── (no parameters)");
+                    
+                    // Handle keyword-only separator
+                    if !has_seen_keyword_only_separator && kind_name == "KEYWORD_ONLY" {
+                        result.push_str("├── *\n");
+                        has_seen_keyword_only_separator = true;
+                    }
+                    
+                    // Format the parameter
+                    let mut param_str = String::new();
+                    
+                    // Handle special parameters
+                    if kind_name == "VAR_POSITIONAL" {
+                        param_str.push('*');
+                    } else if kind_name == "VAR_KEYWORD" {
+                        param_str.push_str("**");
+                    }
+                    
+                    param_str.push_str(&name);
+                    
+                    // Add type annotation if present
+                    let empty = inspect.getattr("_empty")?;
+                    if !annotation.is(&empty) {
+                        let annotation_str = annotation.to_string();
+                        // Only filter out verbose class representations
+                        if !annotation_str.starts_with("<class '") {
+                            param_str.push_str(&format!(": {}", annotation_str));
+                        }
+                    }
+                    
+                    // Add default value if present
+                    if !default.is(&empty) {
+                        param_str.push('=');
+                        let default_str = default.to_string();
+                        if default_str.len() > 20 {
+                            param_str.push_str("...");
+                        } else {
+                            param_str.push_str(&default_str);
+                        }
+                    }
+                    
+                    let prefix = if is_last && !sig.getattr("return_annotation").map(|r| !r.is(&empty)).unwrap_or(false) { 
+                        "└── " 
+                    } else { 
+                        "├── " 
+                    };
+                    result.push_str(&format!("{}{}\n", prefix, param_str));
                 }
-            } else {
-                result.push_str(&format!("└── {}", sig_str));
+            }
+            
+            // Check for return annotation
+            if let Ok(return_annotation) = sig.getattr("return_annotation") {
+                let empty = inspect.getattr("_empty")?;
+                if !return_annotation.is(&empty) {
+                    result.push_str("└── Returns:\n");
+                    result.push_str(&format!("    └── {}", return_annotation.to_string()));
+                }
             }
             
             Ok(result)
