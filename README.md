@@ -43,11 +43,10 @@ uv add pretty-mod
 ## Usage
 
 ```python
-from pretty_mod.explorer import ModuleTreeExplorer
+from pretty_mod import display_tree
 
 # Explore a module structure  
-explorer = ModuleTreeExplorer("json", max_depth=2)
-print(explorer.get_tree_string())
+display_tree("json", max_depth=2)
 ```
 
 <details>
@@ -73,7 +72,7 @@ print(explorer.get_tree_string())
 
 
 ```python
-from pretty_mod.explorer import display_signature
+from pretty_mod import display_signature
 
 # Display function signatures
 print(display_signature("json:loads"))

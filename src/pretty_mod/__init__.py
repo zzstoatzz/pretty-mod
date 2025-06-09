@@ -1,3 +1,3 @@
-from .explorer import ModuleTreeExplorer, display_signature
+from .explorer import display_signature, display_tree
 
-__all__ = ["ModuleTreeExplorer", "display_signature"]
+__all__ = ["display_signature", "display_tree"]

@@ -4,11 +4,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from pretty_mod.explorer import (
-    ModuleTreeExplorer,
-    display_signature,
-    import_object,
-)
+from pretty_mod._internal.utils import import_object
+from pretty_mod.explorer import ModuleTreeExplorer, display_signature
 
 
 class TestModuleTreeExplorer:
@@ -22,7 +19,7 @@ class TestModuleTreeExplorer:
         explorer = ModuleTreeExplorer("test.module")
         assert explorer.max_depth == 2
 
-    @patch("pretty_mod.explorer.importlib.import_module")
+    @patch("pretty_mod._internal.explorer.importlib.import_module")
     def test_import_module_success(self, mock_import):
         mock_module = Mock(spec=ModuleType)
         mock_import.return_value = mock_module
@@ -33,7 +30,7 @@ class TestModuleTreeExplorer:
         assert result == mock_module
         mock_import.assert_called_once_with("test.module")
 
-    @patch("pretty_mod.explorer.importlib.import_module")
+    @patch("pretty_mod._internal.explorer.importlib.import_module")
     def test_import_module_failure(self, mock_import, capsys):
         mock_import.side_effect = ImportError("Module not found")
 
@@ -195,7 +192,7 @@ class TestIntegration:
 
 
 class TestErrorHandling:
-    @patch("pretty_mod.explorer.importlib.import_module")
+    @patch("pretty_mod._internal.explorer.importlib.import_module")
     def test_explore_with_import_failure(self, mock_import, capsys):
         mock_import.return_value = None
 
