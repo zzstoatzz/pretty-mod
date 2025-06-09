@@ -25,7 +25,7 @@ install: check-uv
     uv sync
 
 typecheck: check-uv
-    uv run ty check
+    uv run ty check python tests
 
 # Clean up environment
 clean: check-uv
@@ -34,3 +34,14 @@ clean: check-uv
 
 run-pre-commits: check-uv
     uv run pre-commit run --all-files
+
+# Build Rust extension in development mode
+build:
+    uvx maturin develop --uv
+
+# Run tests after building
+test: build
+    uv run pytest -v
+
+perf-test: build
+    ./scripts/perf_test.py

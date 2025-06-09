@@ -4,13 +4,20 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "src/**/*.py"
-      - "tests/**/*.py"
+      - pyproject.toml
+      - Cargo.toml
+      - python/**/*.py
+      - src/**/*.rs
+      - tests/**/*.py
 
   pull_request:
     paths:
-      - "src/**/*.py"
-      - "tests/**/*.py"
+      - pyproject.toml
+      - Cargo.toml
+      - python/**/*.py
+      - src/**/*.rs
+      - tests/**/*.py
+
   workflow_dispatch:
 
 permissions:
@@ -21,11 +28,11 @@ jobs:
     # Skip the entire job for fork PRs
     if: ${{ !(github.event.pull_request.head.repo.fork) }}
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 3
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.10"]
+        python-version: ["3.9", "3.13"]
 
     runs-on: ${{ matrix.os }}
 
@@ -37,5 +44,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - uses: extractions/setup-just@v3
+
+      - name: Run pre-commit
+        run: just run-pre-commits
+
       - name: Run tests
-        run: uv run --frozen pytest
+        run: just test

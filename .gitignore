@@ -5,9 +5,15 @@ build/
 dist/
 wheels/
 *.egg-info
-
+*.so
+**/*.so
 # Virtual environments
 .venv
 
 # Environment variables
 .env
+
+
+# Rust
+target
+target/*

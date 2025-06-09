@@ -2,69 +2,24 @@ import sys
 from unittest.mock import patch
 
 import pytest
-
-from pretty_mod._internal.cli_impl import _create_parser, _sig_command, _tree_command
+from pretty_mod import display_signature, display_tree
 from pretty_mod.cli import main
 
 
-class TestCLIParser:
-    def test_parser_creation(self):
-        parser = _create_parser()
-        assert parser.prog == "pretty-mod"
-        assert parser.description is not None
-        assert "module tree explorer" in parser.description  # type: ignore[operator]
-
-    def test_tree_subcommand(self):
-        parser = _create_parser()
-        args = parser.parse_args(["tree", "json"])
-        assert args.command == "tree"
-        assert args.module == "json"
-        assert args.depth == 2  # default
-
-    def test_tree_with_depth(self):
-        parser = _create_parser()
-        args = parser.parse_args(["tree", "json", "--depth", "3"])
-        assert args.command == "tree"
-        assert args.module == "json"
-        assert args.depth == 3
-
-    def test_sig_subcommand(self):
-        parser = _create_parser()
-        args = parser.parse_args(["sig", "json:loads"])
-        assert args.command == "sig"
-        assert args.import_path == "json:loads"
-
-    def test_no_subcommand(self):
-        parser = _create_parser()
-        args = parser.parse_args([])
-        assert not hasattr(args, "func")
-
-
-class TestCLICommands:
-    def test_tree_command(self, capsys):
-        class MockArgs:
-            module = "json"
-            depth = 1
-
-        _tree_command(MockArgs())
+class TestCLIDisplayFunctions:
+    def test_display_tree(self, capsys):
+        display_tree("json", 1)
         captured = capsys.readouterr()
         assert "📦 json" in captured.out
 
-    def test_sig_command(self, capsys):
-        class MockArgs:
-            import_path = "builtins:len"
+    def test_display_signature(self):
+        result = display_signature("builtins:len")
+        assert "📎 len" in result
 
-        _sig_command(MockArgs())
-        captured = capsys.readouterr()
-        assert "📎 len" in captured.out
-
-    def test_sig_command_error(self, capsys):
-        class MockArgs:
-            import_path = "nonexistent:function"
-
-        _sig_command(MockArgs())
-        captured = capsys.readouterr()
-        assert "Error:" in captured.out
+    def test_display_signature_error(self):
+        result = display_signature("nonexistent:function")
+        assert "Error:" in result
+        assert "ModuleNotFoundError" in result
 
 
 class TestCLIMain:
@@ -82,25 +37,21 @@ class TestCLIMain:
 
     def test_main_tree(self, capsys):
         with patch.object(sys, "argv", ["pretty-mod", "tree", "json", "--depth", "1"]):
-            with pytest.raises(SystemExit) as exc_info:
-                main()
-            assert exc_info.value.code == 0  # type: ignore[attr-defined]
+            main()  # Should complete successfully without raising
 
         captured = capsys.readouterr()
         assert "📦 json" in captured.out
 
     def test_main_sig(self, capsys):
         with patch.object(sys, "argv", ["pretty-mod", "sig", "builtins:len"]):
-            with pytest.raises(SystemExit) as exc_info:
-                main()
-            assert exc_info.value.code == 0  # type: ignore[attr-defined]
+            main()  # Should complete successfully without raising
 
         captured = capsys.readouterr()
         assert "📎 len" in captured.out
 
     def test_main_keyboard_interrupt(self):
         with patch.object(sys, "argv", ["pretty-mod", "tree", "json"]):
-            with patch("pretty_mod._internal.cli_impl._tree_command") as mock_tree:
+            with patch("pretty_mod.cli.display_tree") as mock_tree:
                 mock_tree.side_effect = KeyboardInterrupt()
                 with pytest.raises(SystemExit) as exc_info:
                     main()
@@ -108,7 +59,7 @@ class TestCLIMain:
 
     def test_main_exception(self):
         with patch.object(sys, "argv", ["pretty-mod", "tree", "json"]):
-            with patch("pretty_mod._internal.cli_impl._tree_command") as mock_tree:
+            with patch("pretty_mod.cli.display_tree") as mock_tree:
                 mock_tree.side_effect = RuntimeError("Test error")
                 with pytest.raises(SystemExit) as exc_info:
                     main()

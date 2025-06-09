@@ -1,6 +1,9 @@
 # pretty-mod
 
-A module tree explorer for humans and LLMs.
+a module tree explorer for LLMs (and humans)
+
+> [!IMPORTANT]
+> for all versions `>=0.1.0`, wheels for different operating systems are built via `maturin` and published to pypi, install `<0.1.0` for a pure python version
 
 ```bash
 » uvx pretty-mod tree json
