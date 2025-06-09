@@ -1,3 +1,51 @@
+# Release Notes - v0.1.0
+
+## 🎉 Major Performance Release
+
+This release introduces a complete architectural rewrite that eliminates Python's import overhead, resulting in massive performance improvements, especially for large packages.
+
+### 📊 Performance Improvements
+
+Benchmarked against v0.0.4 (pure python) using `uvx`:
+
+| Package | v0.0.4 (pure python) | v0.1.0 | Speedup |
+|---------|-----------------|---------|---------|
+| **prefect** | 1,319ms | 104ms | **12.7x faster** |
+| **numpy** | 130ms | 59ms | **2.2x faster** |
+| **pandas** | 218ms | 76ms | **2.9x faster** |
+
+### 🔧 Technical Changes
+
+- **Pure Rust implementation** using ruff's AST parser components
+- **Zero Python imports** during module discovery
+- **Direct filesystem traversal** with BFS algorithm
+- **Rust extension** compiled with maturin for optimal performance
+
+### 🐛 Bug Fixes
+
+- Fixed critical comma-splitting bug in type annotations
+- Improved parameter formatting (`*args`, `**kwargs`)
+- Fixed submodule discovery in filesystem walker
+- Better handling of namespace packages
+
+### 📦 Installation
+
+Wheels are available for all major platforms via PyPI thanks to [maturin](https://github.com/PyO3/maturin).
+
+To install the latest version, use the `--refresh-package` flag with `uvx` at least once.
+
+```bash
+uvx --refresh-package pretty-mod pretty-mod tree json # bust cache
+
+uvx pretty-mod tree json # use the latest version going forward
+```
+
+
+
+
+
+---
+
 # Release Notes - v0.1.0-alpha.1
 
 ## 🚀 Performance Breakthrough
