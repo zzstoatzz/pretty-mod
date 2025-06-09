@@ -25,7 +25,7 @@ install: check-uv
     uv sync
 
 typecheck: check-uv
-    uv run ty check
+    uv run ty check src tests
 
 # Clean up environment
 clean: check-uv
