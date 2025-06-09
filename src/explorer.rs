@@ -145,18 +145,21 @@ impl ModuleTreeExplorer {
         module_path: &str,
         current_depth: usize,
     ) -> PyResult<ModuleInfo> {
-        if current_depth >= self.max_depth {
-            return Ok(ModuleInfo::new());
-        }
-
-        // Try filesystem-based approach first
-        match self.find_module_path(py, module_path) {
-            Ok(module_file_path) => {
-                self.explore_filesystem_module(py, module_path, module_file_path, current_depth)
+        // NEW OPTIMIZATION: Try import-based discovery first for installed packages
+        // This is MUCH faster than filesystem scanning
+        match py.import(module_path) {
+            Ok(module) => {
+                // Success! Use the fast path with pkgutil
+                self.explore_imported_module(py, &module, module_path, current_depth)
             }
             Err(_) => {
-                // Fallback: try built-in module via Python introspection
-                self.explore_builtin_module(py, module_path)
+                // Fallback to filesystem for local/development modules
+                match self.find_module_path(py, module_path) {
+                    Ok(module_file_path) => {
+                        self.explore_filesystem_module(py, module_path, module_file_path, current_depth)
+                    }
+                    Err(e) => Err(e)
+                }
             }
         }
     }
@@ -192,8 +195,8 @@ impl ModuleTreeExplorer {
             }
         };
 
-        // Find submodules by scanning the directory
-        if module_file_path.is_dir() {
+        // Find submodules by scanning the directory (only if we haven't reached max depth)
+        if current_depth < self.max_depth && module_file_path.is_dir() {
             if let Ok(entries) = fs::read_dir(&module_file_path) {
                 for entry in entries.flatten() {
                     let file_name = entry.file_name();
@@ -235,21 +238,54 @@ impl ModuleTreeExplorer {
         Ok(info)
     }
 
-    /// Explore a built-in module using Python introspection
-    fn explore_builtin_module(&self, py: Python, module_path: &str) -> PyResult<ModuleInfo> {
-        // Try to import the module via Python
-        let module = match py.import(module_path) {
-            Ok(module) => module,
-            Err(_) => {
-                return Err(PyErr::new::<pyo3::exceptions::PyModuleNotFoundError, _>(
-                    format!("No module named '{}'", module_path),
-                ));
+    /// Explore an already-imported module using pkgutil for fast submodule discovery
+    fn explore_imported_module(
+        &self,
+        py: Python,
+        module: &Bound<'_, PyAny>,
+        module_path: &str,
+        current_depth: usize,
+    ) -> PyResult<ModuleInfo> {
+        // Get the module's API information
+        let mut info = ModuleInfo::from_python_module(py, module)?;
+        
+        // Only explore submodules if we haven't reached max depth
+        if current_depth < self.max_depth && module.hasattr("__path__")? {
+            let pkgutil = py.import("pkgutil")?;
+            let iter_modules = pkgutil.getattr("iter_modules")?;
+            
+            // Call pkgutil.iter_modules(module.__path__, module.__name__ + '.')
+            let module_path_attr = module.getattr("__path__")?;
+            let prefix = format!("{}.", module_path);
+            let iterator = iter_modules.call1((module_path_attr, &prefix))?;
+            
+            // Iterate over submodules
+            for item in iterator.try_iter()? {
+                let item = item?;
+                let module_info = item.extract::<(PyObject, String, bool)>()?;
+                let (_, full_name, _is_pkg) = module_info;
+                
+                // Extract just the submodule name
+                if let Some(submod_name) = full_name.strip_prefix(&prefix) {
+                    // Skip private modules
+                    if !submod_name.starts_with('_') {
+                        // Recursively explore submodule
+                        match self.explore_module_rust(py, &full_name, current_depth + 1) {
+                            Ok(submodule_info) => {
+                                info.submodules.insert(submod_name.to_string(), submodule_info);
+                            }
+                            Err(_) => {
+                                // Skip failed submodules
+                            }
+                        }
+                    }
+                }
             }
-        };
-
-        // Use Python introspection to get module info
-        ModuleInfo::from_python_module(py, &module)
+        }
+        
+        Ok(info)
     }
+
 
     /// Get Python's sys.path to guide module discovery
     fn get_sys_path(&self, py: Python) -> PyResult<Vec<PathBuf>> {
