@@ -25,7 +25,7 @@ install: check-uv
     uv sync
 
 typecheck: check-uv
-    uv run ty check src tests
+    uv run ty check python tests
 
 # Clean up environment
 clean: check-uv
@@ -42,3 +42,6 @@ build:
 # Run tests after building
 test: build
     uv run pytest -v
+
+perf-test: build
+    ./scripts/perf_test.py

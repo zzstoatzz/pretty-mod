@@ -78,7 +78,7 @@ impl ModuleTreeExplorer {
             // Convert nested submodules recursively
             let nested_submodules_dict = pyo3::types::PyDict::new(py);
             for (nested_name, nested_info) in submodule_info.submodules {
-                let nested_dict = self.convert_module_info_to_dict(py, &nested_info)?;
+                let nested_dict = convert_module_info_to_dict(py, &nested_info)?;
                 nested_submodules_dict.set_item(nested_name, nested_dict)?;
             }
             submodule_dict.set_item("submodules", nested_submodules_dict)?;
@@ -114,30 +114,30 @@ impl ModuleTreeExplorer {
     }
 }
 
-impl ModuleTreeExplorer {
-    /// Convert a ModuleInfo struct to a Python dict
-    fn convert_module_info_to_dict(&self, py: Python, info: &ModuleInfo) -> PyResult<PyObject> {
-        let dict = pyo3::types::PyDict::new(py);
-        
-        // Create api dict
-        let api_dict = pyo3::types::PyDict::new(py);
-        api_dict.set_item("all", info.all_exports.as_ref().unwrap_or(&Vec::new()))?;
-        api_dict.set_item("functions", &info.functions)?;
-        api_dict.set_item("classes", &info.classes)?;
-        api_dict.set_item("constants", &info.constants)?;
-        dict.set_item("api", api_dict)?;
-        
-        // Convert submodules recursively
-        let submodules_dict = pyo3::types::PyDict::new(py);
-        for (name, sub_info) in &info.submodules {
-            let sub_dict = self.convert_module_info_to_dict(py, sub_info)?;
-            submodules_dict.set_item(name, sub_dict)?;
-        }
-        dict.set_item("submodules", submodules_dict)?;
-        
-        Ok(dict.into())
+/// Convert a ModuleInfo struct to a Python dict
+fn convert_module_info_to_dict(py: Python, info: &ModuleInfo) -> PyResult<PyObject> {
+    let dict = pyo3::types::PyDict::new(py);
+    
+    // Create api dict
+    let api_dict = pyo3::types::PyDict::new(py);
+    api_dict.set_item("all", info.all_exports.as_ref().unwrap_or(&Vec::new()))?;
+    api_dict.set_item("functions", &info.functions)?;
+    api_dict.set_item("classes", &info.classes)?;
+    api_dict.set_item("constants", &info.constants)?;
+    dict.set_item("api", api_dict)?;
+    
+    // Convert submodules recursively
+    let submodules_dict = pyo3::types::PyDict::new(py);
+    for (name, sub_info) in &info.submodules {
+        let sub_dict = convert_module_info_to_dict(py, sub_info)?;
+        submodules_dict.set_item(name, sub_dict)?;
     }
+    dict.set_item("submodules", submodules_dict)?;
+    
+    Ok(dict.into())
+}
 
+impl ModuleTreeExplorer {
     /// Recursively explore a module and build ModuleInfo tree using Python's sys.path
     fn explore_module_rust(
         &self,
