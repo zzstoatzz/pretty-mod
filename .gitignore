@@ -17,3 +17,6 @@ wheels/
 # Rust
 target
 target/*
+
+# Temporary files
+temp/

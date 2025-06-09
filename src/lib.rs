@@ -30,56 +30,140 @@ fn display_signature(py: Python, import_path: &str) -> PyResult<String> {
             return Ok(format!("Error: Could not import {}: {}", import_path, e));
         }
     };
-    
+
     // Check if callable
     let builtins = py.import("builtins")?;
-    let is_callable = builtins.getattr("callable")?.call1((&func,))?.extract::<bool>()?;
+    let is_callable = builtins
+        .getattr("callable")?
+        .call1((&func,))?
+        .extract::<bool>()?;
     if !is_callable {
-        return Ok(format!("Error: Imported object {} is not callable", import_path));
+        return Ok(format!(
+            "Error: Imported object {} is not callable",
+            import_path
+        ));
     }
-    
+
     // Get the function name
     let func_name = if let Ok(name) = func.bind(py).getattr("__name__") {
-        name.extract::<String>().unwrap_or_else(|_| "unknown".to_string())
+        name.extract::<String>()
+            .unwrap_or_else(|_| "unknown".to_string())
     } else {
         // Extract name from import path
-        import_path.split(&[':', '.'][..]).last().unwrap_or("unknown").to_string()
+        import_path
+            .split(&[':', '.'][..])
+            .last()
+            .unwrap_or("unknown")
+            .to_string()
     };
-    
+
     let inspect = py.import("inspect")?;
     match inspect.getattr("signature")?.call1((&func,)) {
         Ok(sig) => {
-            // Parse the signature to extract parameters
-            let sig_str = sig.to_string();
-            
             // Build the formatted output
             let mut result = format!("📎 {}\n", func_name);
-            
-            // Simple parsing - just show the signature with Parameters: prefix
-            if sig_str.contains('(') && sig_str.contains(')') {
-                result.push_str("├── Parameters:\n");
-                
-                // Extract parameters from signature string
-                let params_start = sig_str.find('(').unwrap_or(0) + 1;
-                let params_end = sig_str.rfind(')').unwrap_or(sig_str.len());
-                let params_str = &sig_str[params_start..params_end];
-                
-                if !params_str.is_empty() {
-                    let params: Vec<&str> = params_str.split(", ").collect();
-                    for (i, param) in params.iter().enumerate() {
-                        if i == params.len() - 1 {
-                            result.push_str(&format!("└── {}", param));
-                        } else {
-                            result.push_str(&format!("├── {}\n", param));
+            result.push_str("├── Parameters:\n");
+
+            // Get parameters from signature
+            let params_obj = sig.getattr("parameters")?;
+            let params_values = params_obj.call_method0("values")?;
+            let builtins = py.import("builtins")?;
+            let params_list: Vec<PyObject> = builtins
+                .getattr("list")?
+                .call1((params_values,))?
+                .extract()?;
+
+            if params_list.is_empty() {
+                result.push_str("└── (no parameters)");
+            } else {
+                let mut has_seen_keyword_only_separator = false;
+
+                for (i, param) in params_list.iter().enumerate() {
+                    let is_last = i == params_list.len() - 1;
+                    let param_bound = param.bind(py);
+
+                    // Get parameter properties
+                    let name: String = param_bound.getattr("name")?.extract()?;
+                    let kind = param_bound.getattr("kind")?;
+                    let default = param_bound.getattr("default")?;
+                    let annotation = param_bound.getattr("annotation")?;
+
+                    // Get kind name
+                    let kind_name: String = kind.getattr("name")?.extract()?;
+
+                    // Handle positional-only separator
+                    if kind_name == "POSITIONAL_ONLY" && i < params_list.len() - 1 {
+                        // Check if next param is not POSITIONAL_ONLY
+                        let next_param = params_list[i + 1].bind(py);
+                        let next_kind = next_param.getattr("kind")?;
+                        let next_kind_name: String = next_kind.getattr("name")?.extract()?;
+                        if next_kind_name != "POSITIONAL_ONLY" {
+                            result.push_str("├── /\n");
                         }
                     }
-                } else {
-                    result.push_str("└── (no parameters)");
+
+                    // Handle keyword-only separator
+                    if !has_seen_keyword_only_separator && kind_name == "KEYWORD_ONLY" {
+                        result.push_str("├── *\n");
+                        has_seen_keyword_only_separator = true;
+                    }
+
+                    // Format the parameter
+                    let mut param_str = String::new();
+
+                    // Handle special parameters
+                    if kind_name == "VAR_POSITIONAL" {
+                        param_str.push('*');
+                    } else if kind_name == "VAR_KEYWORD" {
+                        param_str.push_str("**");
+                    }
+
+                    param_str.push_str(&name);
+
+                    // Add type annotation if present
+                    let empty = inspect.getattr("_empty")?;
+                    if !annotation.is(&empty) {
+                        let annotation_str = annotation.to_string();
+                        // Only filter out verbose class representations
+                        if !annotation_str.starts_with("<class '") {
+                            param_str.push_str(&format!(": {}", annotation_str));
+                        }
+                    }
+
+                    // Add default value if present
+                    if !default.is(&empty) {
+                        param_str.push('=');
+                        let default_str = default.to_string();
+                        if default_str.len() > 20 {
+                            param_str.push_str("...");
+                        } else {
+                            param_str.push_str(&default_str);
+                        }
+                    }
+
+                    let prefix = if is_last
+                        && !sig
+                            .getattr("return_annotation")
+                            .map(|r| !r.is(&empty))
+                            .unwrap_or(false)
+                    {
+                        "└── "
+                    } else {
+                        "├── "
+                    };
+                    result.push_str(&format!("{}{}\n", prefix, param_str));
                 }
-            } else {
-                result.push_str(&format!("└── {}", sig_str));
             }
-            
+
+            // Check for return annotation
+            if let Ok(return_annotation) = sig.getattr("return_annotation") {
+                let empty = inspect.getattr("_empty")?;
+                if !return_annotation.is(&empty) {
+                    result.push_str("└── Returns:\n");
+                    result.push_str(&format!("    └── {}", return_annotation));
+                }
+            }
+
             Ok(result)
         }
         Err(_) => Ok(format!("📎 {} (signature unavailable)", func_name)),
@@ -104,7 +188,7 @@ fn import_object(py: Python, import_path: &str) -> PyResult<PyObject> {
     } else if import_path.contains('.') {
         // Dot syntax: try to find where module ends and attribute begins
         let parts: Vec<&str> = import_path.split('.').collect();
-        
+
         // Try importing progressively longer module paths
         for i in (1..parts.len()).rev() {
             let module_path = parts[..i].join(".");
@@ -113,20 +197,24 @@ fn import_object(py: Python, import_path: &str) -> PyResult<PyObject> {
                     // Found the module, now get the remaining attributes
                     let mut obj: PyObject = module.into();
                     for attr in &parts[i..] {
-                        obj = obj.bind(py).getattr(attr).map_err(|_| {
-                            PyErr::new::<pyo3::exceptions::PyImportError, _>(format!(
-                                "cannot import name '{}' from '{}'",
-                                attr,
-                                parts[..i].join(".")
-                            ))
-                        })?.into();
+                        obj = obj
+                            .bind(py)
+                            .getattr(attr)
+                            .map_err(|_| {
+                                PyErr::new::<pyo3::exceptions::PyImportError, _>(format!(
+                                    "cannot import name '{}' from '{}'",
+                                    attr,
+                                    parts[..i].join(".")
+                                ))
+                            })?
+                            .into();
                     }
                     return Ok(obj);
                 }
                 Err(_) => continue,
             }
         }
-        
+
         // If no valid module found, it might be a top-level module
         py.import(import_path).map(|m| m.into())
     } else {
@@ -136,23 +224,31 @@ fn import_object(py: Python, import_path: &str) -> PyResult<PyObject> {
 }
 
 /// Format tree display for wrapped format (with api/submodules structure)
-pub(crate) fn format_tree_display(py: Python, tree: &PyObject, module_name: &str) -> PyResult<String> {
+pub(crate) fn format_tree_display(
+    py: Python,
+    tree: &PyObject,
+    module_name: &str,
+) -> PyResult<String> {
     let tree_dict: std::collections::HashMap<String, pyo3::PyObject> = tree.extract(py)?;
-    
+
     let mut result = format!("📦 {}\n", module_name);
-    
+
     // Check if there are submodules
-    let has_submodules = tree_dict.get("submodules")
-        .and_then(|s| s.extract::<std::collections::HashMap<String, pyo3::PyObject>>(py).ok())
+    let has_submodules = tree_dict
+        .get("submodules")
+        .and_then(|s| {
+            s.extract::<std::collections::HashMap<String, pyo3::PyObject>>(py)
+                .ok()
+        })
         .map(|s| !s.is_empty())
         .unwrap_or(false);
-    
+
     // Extract the api dict
     if let Some(api) = tree_dict.get("api") {
         let api_dict: std::collections::HashMap<String, pyo3::PyObject> = api.extract(py)?;
-        
+
         let mut items: Vec<String> = Vec::new();
-        
+
         // Add __all__ if present
         if let Some(all_exports) = api_dict.get("all") {
             let exports: Vec<String> = all_exports.extract(py)?;
@@ -160,7 +256,7 @@ pub(crate) fn format_tree_display(py: Python, tree: &PyObject, module_name: &str
                 items.push(format!("📜 __all__: {}", exports.join(", ")));
             }
         }
-        
+
         // functions
         if let Some(functions) = api_dict.get("functions") {
             let funcs: Vec<String> = functions.extract(py)?;
@@ -168,7 +264,7 @@ pub(crate) fn format_tree_display(py: Python, tree: &PyObject, module_name: &str
                 items.push(format!("⚡ functions: {}", funcs.join(", ")));
             }
         }
-        
+
         // classes
         if let Some(classes) = api_dict.get("classes") {
             let cls: Vec<String> = classes.extract(py)?;
@@ -176,7 +272,7 @@ pub(crate) fn format_tree_display(py: Python, tree: &PyObject, module_name: &str
                 items.push(format!("🔷 classes: {}", cls.join(", ")));
             }
         }
-        
+
         // constants
         if let Some(constants) = api_dict.get("constants") {
             let consts: Vec<String> = constants.extract(py)?;
@@ -184,7 +280,7 @@ pub(crate) fn format_tree_display(py: Python, tree: &PyObject, module_name: &str
                 items.push(format!("📌 constants: {}", consts.join(", ")));
             }
         }
-        
+
         // Print items
         for (i, item) in items.iter().enumerate() {
             let is_last = i == items.len() - 1 && !has_submodules;
@@ -192,19 +288,19 @@ pub(crate) fn format_tree_display(py: Python, tree: &PyObject, module_name: &str
             result.push_str(&format!("{}{}\n", prefix, item));
         }
     }
-    
+
     // submodules
     if let Some(submodules) = tree_dict.get("submodules") {
         let submods: std::collections::HashMap<String, pyo3::PyObject> = submodules.extract(py)?;
         let mut submod_names: Vec<_> = submods.keys().cloned().collect();
         submod_names.sort();
-        
+
         if !submod_names.is_empty() {
             for (i, name) in submod_names.iter().enumerate() {
                 let is_last = i == submod_names.len() - 1;
                 let prefix = if is_last { "└── " } else { "├── " };
                 result.push_str(&format!("{}📦 {}\n", prefix, name));
-                
+
                 if let Some(submod_tree) = submods.get(name) {
                     let submod_content = format_tree_recursive(
                         py,
@@ -216,25 +312,21 @@ pub(crate) fn format_tree_display(py: Python, tree: &PyObject, module_name: &str
             }
         }
     }
-    
+
     Ok(result)
 }
 
-fn format_tree_recursive(
-    py: Python,
-    tree: &PyObject,
-    prefix: &str,
-) -> PyResult<String> {
+fn format_tree_recursive(py: Python, tree: &PyObject, prefix: &str) -> PyResult<String> {
     let tree_dict: std::collections::HashMap<String, pyo3::PyObject> = tree.extract(py)?;
-    
+
     let mut result = String::new();
-    
+
     // Extract the api dict
     if let Some(api) = tree_dict.get("api") {
         let api_dict: std::collections::HashMap<String, pyo3::PyObject> = api.extract(py)?;
-        
+
         let mut items: Vec<String> = Vec::new();
-        
+
         // Add __all__ if present
         if let Some(all_exports) = api_dict.get("all") {
             let exports: Vec<String> = all_exports.extract(py)?;
@@ -242,7 +334,7 @@ fn format_tree_recursive(
                 items.push(format!("📜 __all__: {}", exports.join(", ")));
             }
         }
-        
+
         // functions
         if let Some(functions) = api_dict.get("functions") {
             let funcs: Vec<String> = functions.extract(py)?;
@@ -250,7 +342,7 @@ fn format_tree_recursive(
                 items.push(format!("⚡ functions: {}", funcs.join(", ")));
             }
         }
-        
+
         // classes
         if let Some(classes) = api_dict.get("classes") {
             let cls: Vec<String> = classes.extract(py)?;
@@ -258,7 +350,7 @@ fn format_tree_recursive(
                 items.push(format!("🔷 classes: {}", cls.join(", ")));
             }
         }
-        
+
         // constants
         if let Some(constants) = api_dict.get("constants") {
             let consts: Vec<String> = constants.extract(py)?;
@@ -266,13 +358,17 @@ fn format_tree_recursive(
                 items.push(format!("📌 constants: {}", consts.join(", ")));
             }
         }
-        
+
         // Check if there are submodules
-        let has_submodules = tree_dict.get("submodules")
-            .and_then(|s| s.extract::<std::collections::HashMap<String, pyo3::PyObject>>(py).ok())
+        let has_submodules = tree_dict
+            .get("submodules")
+            .and_then(|s| {
+                s.extract::<std::collections::HashMap<String, pyo3::PyObject>>(py)
+                    .ok()
+            })
             .map(|s| !s.is_empty())
             .unwrap_or(false);
-        
+
         // Print items
         for (i, item) in items.iter().enumerate() {
             let is_last = i == items.len() - 1 && !has_submodules;
@@ -280,19 +376,19 @@ fn format_tree_recursive(
             result.push_str(&format!("{}{}{}\n", prefix, item_prefix, item));
         }
     }
-    
+
     // Process submodules recursively
     if let Some(submodules) = tree_dict.get("submodules") {
         let submods: std::collections::HashMap<String, pyo3::PyObject> = submodules.extract(py)?;
         let mut submod_names: Vec<_> = submods.keys().cloned().collect();
         submod_names.sort();
-        
+
         for (i, name) in submod_names.iter().enumerate() {
             let is_last = i == submod_names.len() - 1;
             let submod_prefix = if is_last { "└── " } else { "├── " };
-            
+
             result.push_str(&format!("{}{}📦 {}\n", prefix, submod_prefix, name));
-            
+
             if let Some(submod_tree) = submods.get(name) {
                 let submod_content = format_tree_recursive(
                     py,
@@ -303,7 +399,7 @@ fn format_tree_recursive(
             }
         }
     }
-    
+
     Ok(result)
 }
 

@@ -125,3 +125,32 @@ See the [`examples/`](examples/) directory for more detailed usage patterns and 
 gh repo clone zzstoatzz/pretty-mod && cd pretty-mod
 just --list # see https://github.com/casey/just
 ```
+
+<details>
+<summary>Performance Testing</summary>
+
+The performance test script (`scripts/perf_test.py`) supports both single-run exploration and proper benchmarking with multiple iterations:
+
+```bash
+# Run a proper benchmark with multiple iterations
+./scripts/perf_test.py json --benchmark
+./scripts/perf_test.py urllib --benchmark --runs 100 --warmup 10
+
+# Compare performance between local and published versions
+just compare-perf prefect 2
+
+# Benchmark multiple modules
+just benchmark-modules
+
+# Or use shell timing for quick single-run comparisons
+time ./scripts/perf_test.py numpy --depth 3
+time uvx pretty-mod tree numpy --depth 3
+```
+
+Benchmark mode provides:
+- Warmup runs to account for cold starts
+- Multiple iterations for statistical significance
+- Mean, standard deviation, min/max timing statistics
+- Silent operation (no tree output) for accurate timing
+
+</details>
