@@ -35,13 +35,18 @@ clean: check-uv
 run-pre-commits: check-uv
     uv run pre-commit run --all-files
 
-# Build Rust extension in development mode
+# Build Rust extension in release mode for performance
 build:
-    uvx maturin develop --uv
+    uvx maturin develop --uv --release
 
 # Run tests after building
 test: build
     uv run pytest -v
 
-perf-test: build
-    ./scripts/perf_test.py
+# Run performance test
+perf MODULE='json': build
+    ./scripts/perf_test.py {{MODULE}} --benchmark
+
+# Profile a module to find bottlenecks  
+profile MODULE='json': build
+    ./scripts/profile.py {{MODULE}}
