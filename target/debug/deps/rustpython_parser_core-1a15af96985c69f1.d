@@ -1,0 +1,9 @@
+/Users/nate/github.com/zzstoatzz/pretty-mod/target/debug/deps/librustpython_parser_core-1a15af96985c69f1.rmeta: /Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/lib.rs /Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/error.rs /Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/format.rs /Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/mode.rs /Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/source_code.rs
+
+/Users/nate/github.com/zzstoatzz/pretty-mod/target/debug/deps/rustpython_parser_core-1a15af96985c69f1.d: /Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/lib.rs /Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/error.rs /Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/format.rs /Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/mode.rs /Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/source_code.rs
+
+/Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/lib.rs:
+/Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/error.rs:
+/Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/format.rs:
+/Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/mode.rs:
+/Users/nate/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustpython-parser-core-0.4.0/src/source_code.rs:

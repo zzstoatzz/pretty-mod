@@ -1,0 +1,1 @@
+/Users/nate/github.com/zzstoatzz/pretty-mod/target/debug/libpretty_mod.dylib: /Users/nate/github.com/zzstoatzz/pretty-mod/src/explorer.rs /Users/nate/github.com/zzstoatzz/pretty-mod/src/lib.rs /Users/nate/github.com/zzstoatzz/pretty-mod/src/module_info.rs

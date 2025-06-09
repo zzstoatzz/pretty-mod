@@ -11,20 +11,25 @@ dependencies = []
 pretty-mod = "pretty_mod.cli:main"
 
 [dependency-groups]
-dev = ["pytest-sugar", "ruff", "ty", "ipython", "pre-commit", "pyinstrument"]
+dev = [
+    "maturin",
+    "pytest-sugar",
+    "ruff",
+    "ty",
+    "ipython",
+    "pre-commit",
+    "pyinstrument",
+]
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+python-source = "python"
+module-name = "pretty_mod._pretty_mod"
+bindings = "pyo3"
 
 [build-system]
-requires = ["hatchling>=1.21.0", "hatch-vcs>=0.4.0"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/pretty_mod"]
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.hatch.version]
-source = "vcs"
+requires = ["maturin>=1.8,<2.0"]
+build-backend = "maturin"
 
 [tool.ruff.lint]
 extend-select = ["I", "UP"]

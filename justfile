@@ -34,3 +34,11 @@ clean: check-uv
 
 run-pre-commits: check-uv
     uv run pre-commit run --all-files
+
+# Build Rust extension in development mode
+build:
+    uvx maturin develop --uv
+
+# Run tests after building
+test: build
+    uv run pytest -v
