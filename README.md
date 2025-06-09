@@ -46,26 +46,22 @@ uv add pretty-mod
 from pretty_mod import display_tree
 
 # Explore a module structure  
-display_tree("json", max_depth=2)
+display_tree("collections", max_depth=2)
 ```
 
 <details>
 <summary>Example output</summary>
 
 ```text
-📦 json
-└── 📜 __all__: dump, dumps, load, loads, JSONDecoder, JSONDecodeError, JSONEncoder
-├── ⚡ functions: dump, dumps, load, loads
-├── 📦 decoder
-    ├── 📜 __all__: JSONDecoder, JSONDecodeError
-    ├── 🔷 classes: JSONDecodeError, JSONDecoder
-├── 📦 encoder
-    ├── 🔷 classes: JSONEncoder
-    ├── ⚡ functions: py_encode_basestring, py_encode_basestring_ascii
-├── 📦 scanner
-    ├── 📜 __all__: make_scanner
-└── 📦 tool
-    └── ⚡ functions: main
+display_tree("collections", max_depth=2)
+
+📦 collections
+├── 📜 __all__: ChainMap, Counter, OrderedDict, UserDict, UserList, UserString, defaultdict, deque, namedtuple
+├── 🔷 classes: ChainMap, Counter, OrderedDict, UserDict, UserList, UserString, defaultdict, deque
+├── ⚡ functions: namedtuple
+└── 📦 abc
+    ├── 📜 __all__: Awaitable, Coroutine, AsyncIterable, AsyncIterator, AsyncGenerator, Hashable, Iterable, Iterator, Generator, Reversible, Sized, Container, Callable, Collection, Set, MutableSet, Mapping, MutableMapping, MappingView, KeysView, ItemsView, ValuesView, Sequence, MutableSequence, ByteString, Buffer
+    └── 🔷 classes: AsyncGenerator, AsyncIterable, AsyncIterator, Awaitable, Buffer, ByteString, Callable, Collection, Container, Coroutine, Generator, Hashable, ItemsView, Iterable, Iterator, KeysView, Mapping, MappingView, MutableMapping, MutableSequence, MutableSet, Reversible, Sequence, Set, Sized, ValuesView
 ```
 </details>
 
@@ -74,7 +70,7 @@ display_tree("json", max_depth=2)
 ```python
 from pretty_mod import display_signature
 
-# Display function signatures
+# Display the signature of a callable (function or class constructor)
 print(display_signature("json:loads"))
 ```
 
