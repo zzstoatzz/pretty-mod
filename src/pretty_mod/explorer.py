@@ -163,30 +163,44 @@ class ModuleTreeExplorer:
             lines.append(f"📦 {self.root_module_path}")
 
         api = tree.get("api", {})
-        indent = "    " if is_last else "│   "
+        submodules = tree.get("submodules", {})
 
-        # Add public API categories
+        # Collect all items that will be displayed at this level
+        api_items = []
         if api.get("all"):
-            lines.append(
-                f"{prefix}{'└── ' if is_last else '├── '}📜 __all__: {', '.join(api['all'])}"
-            )
+            api_items.append(("📜", "__all__", ", ".join(api["all"])))
 
         for category, items in api.items():
             if category != "all" and items:
-                lines.append(
-                    f"{prefix}{'└── ' if is_last and not tree['submodules'] else '├── '}"
-                    f"{'🔷' if category == 'classes' else '⚡' if category == 'functions' else '📌'} "
-                    f"{category}: {', '.join(sorted(items))}"
+                icon = (
+                    "🔷"
+                    if category == "classes"
+                    else "⚡"
+                    if category == "functions"
+                    else "📌"
                 )
+                api_items.append((icon, category, ", ".join(sorted(items))))
+
+        # Add API items with correct connectors
+        total_items = len(api_items) + len(submodules)
+        for idx, (icon, category, content) in enumerate(api_items):
+            is_last_item = idx == total_items - 1
+            connector = "└── " if is_last_item else "├── "
+            if category == "__all__":
+                lines.append(f"{prefix}{connector}📜 __all__: {content}")
+            else:
+                lines.append(f"{prefix}{connector}{icon} {category}: {content}")
 
         # Add submodules
-        submodules = tree.get("submodules", {})
         for idx, (name, subtree) in enumerate(submodules.items()):
-            is_last_module = idx == len(submodules) - 1
-            lines.append(f"{prefix}{'└── ' if is_last_module else '├── '}📦 {name}")
+            submodule_idx = len(api_items) + idx
+            is_last_item = submodule_idx == total_items - 1
+            lines.append(f"{prefix}{'└── ' if is_last_item else '├── '}📦 {name}")
+            # Use proper indentation: only use spaces if this submodule is the last item
+            submodule_indent = "    " if is_last_item else "│   "
             lines.extend(
                 self.get_tree_string(
-                    subtree, prefix + indent, is_last_module
+                    subtree, prefix + submodule_indent, True
                 ).splitlines()
             )
 

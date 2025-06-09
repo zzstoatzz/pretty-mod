@@ -2,6 +2,38 @@
 
 A module tree explorer for humans and LLMs.
 
+```bash
+» uvx pretty-mod tree json
+📦 json
+├── 📜 __all__: dump, dumps, load, loads, JSONDecoder, JSONDecodeError, JSONEncoder
+├── ⚡ functions: dump, dumps, load, loads
+├── 📦 decoder
+│   ├── 📜 __all__: JSONDecoder, JSONDecodeError
+│   └── 🔷 classes: JSONDecodeError, JSONDecoder
+├── 📦 encoder
+│   ├── 🔷 classes: JSONEncoder
+│   └── ⚡ functions: py_encode_basestring, py_encode_basestring_ascii
+├── 📦 scanner
+│   └── 📜 __all__: make_scanner
+└── 📦 tool
+    └── ⚡ functions: main
+
+» uvx pretty-mod sig json:dumps
+📎 dumps
+├── Parameters:
+├── obj
+├── skipkeys = False (keyword-only)
+├── ensure_ascii = True (keyword-only)
+├── check_circular = True (keyword-only)
+├── allow_nan = True (keyword-only)
+├── cls = None (keyword-only)
+├── indent = None (keyword-only)
+├── separators = None (keyword-only)
+├── default = None (keyword-only)
+├── sort_keys = False (keyword-only)
+└── kw (**kwargs)
+```
+
 ## Installation
 
 ```bash
