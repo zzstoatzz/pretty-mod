@@ -1,7 +1,7 @@
 use pyo3::prelude::*;
 use rustpython_parser::{ast, Parse};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 
@@ -38,6 +38,7 @@ impl ModuleInfo {
             ))
         })?;
 
+
         let suite =
             ast::Suite::parse(&source, file_path.to_string_lossy().as_ref()).map_err(|e| {
                 PyErr::new::<pyo3::exceptions::PySyntaxError, _>(format!(
@@ -47,7 +48,8 @@ impl ModuleInfo {
                 ))
             })?;
 
-        // First pass: collect __all__ and raw functions/classes/constants
+        // Parse AST and collect module information
+        // This is only used as a fallback when Python import fails
         let mut raw_functions = Vec::new();
         let mut raw_classes = Vec::new();
         let mut raw_constants = Vec::new();
@@ -94,23 +96,13 @@ impl ModuleInfo {
             }
         }
         
-        // Second pass: filter functions/classes/constants based on __all__ if it exists
+        // Apply __all__ filter if present
         if let Some(ref all_exports) = info.all_exports {
-            // Only include items that are in __all__
-            info.functions = raw_functions
-                .into_iter()
-                .filter(|f| all_exports.contains(f))
-                .collect();
-            info.classes = raw_classes
-                .into_iter()
-                .filter(|c| all_exports.contains(c))
-                .collect();
-            info.constants = raw_constants
-                .into_iter()
-                .filter(|c| all_exports.contains(c))
-                .collect();
+            let export_set: HashSet<&str> = all_exports.iter().map(|s| s.as_str()).collect();
+            info.functions = raw_functions.into_iter().filter(|f| export_set.contains(f.as_str())).collect();
+            info.classes = raw_classes.into_iter().filter(|c| export_set.contains(c.as_str())).collect();
+            info.constants = raw_constants.into_iter().filter(|c| export_set.contains(c.as_str())).collect();
         } else {
-            // No __all__, include all non-underscore items
             info.functions = raw_functions;
             info.classes = raw_classes;
             info.constants = raw_constants;

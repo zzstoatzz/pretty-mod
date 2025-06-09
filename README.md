@@ -1,6 +1,6 @@
 # pretty-mod
 
-A module tree explorer for humans and LLMs.
+A module tree explorer for humans and LLMs. Built with Rust for blazing fast exploration.
 
 ```bash
 » uvx pretty-mod tree json

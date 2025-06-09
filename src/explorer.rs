@@ -169,17 +169,27 @@ impl ModuleTreeExplorer {
         module_file_path: PathBuf,
         current_depth: usize,
     ) -> PyResult<ModuleInfo> {
-        let mut info = if module_file_path.is_dir() {
-            // Package: read __init__.py
-            let init_py = module_file_path.join("__init__.py");
-            if init_py.exists() {
-                ModuleInfo::from_python_file(&init_py)?
-            } else {
-                ModuleInfo::new()
-            }
+        // Determine the actual file to parse
+        let file_to_parse = if module_file_path.is_dir() {
+            module_file_path.join("__init__.py")
         } else {
-            // Regular module: read the .py file
-            ModuleInfo::from_python_file(&module_file_path)?
+            module_file_path.clone()
+        };
+
+        // ALWAYS try Python introspection first - it's faster!
+        let mut info = match py.import(module_path) {
+            Ok(module) => {
+                // Success! Use Python introspection
+                ModuleInfo::from_python_module(py, &module)?
+            }
+            Err(_) => {
+                // Only fall back to AST parsing if import fails
+                if file_to_parse.exists() {
+                    ModuleInfo::from_python_file(&file_to_parse)?
+                } else {
+                    ModuleInfo::new()
+                }
+            }
         };
 
         // Find submodules by scanning the directory
