@@ -25,16 +25,17 @@ a module tree explorer for LLMs (and humans)
 📎 dumps
 ├── Parameters:
 ├── obj
-├── skipkeys = False (keyword-only)
-├── ensure_ascii = True (keyword-only)
-├── check_circular = True (keyword-only)
-├── allow_nan = True (keyword-only)
-├── cls = None (keyword-only)
-├── indent = None (keyword-only)
-├── separators = None (keyword-only)
-├── default = None (keyword-only)
-├── sort_keys = False (keyword-only)
-└── kw (**kwargs)
+├── *
+├── skipkeys=False
+├── ensure_ascii=True
+├── check_circular=True
+├── allow_nan=True
+├── cls=None
+├── indent=None
+├── separators=None
+├── default=None
+├── sort_keys=False
+└── **kw
 ```
 
 ## Installation
@@ -84,13 +85,14 @@ print(display_signature("json:loads"))
 📎 loads
 ├── Parameters:
 ├── s
-├── cls = None (keyword-only)
-├── object_hook = None (keyword-only)
-├── parse_float = None (keyword-only)
-├── parse_int = None (keyword-only)
-├── parse_constant = None (keyword-only)
-├── object_pairs_hook = None (keyword-only)
-└── kw (**kwargs)
+├── *
+├── cls=None
+├── object_hook=None
+├── parse_float=None
+├── parse_int=None
+├── parse_constant=None
+├── object_pairs_hook=None
+└── **kw
 ```
 </details>
 
@@ -120,8 +122,6 @@ See the [`examples/`](examples/) directory for more detailed usage patterns and 
 ## Development
 
 ```bash
-git clone https://github.com/zzstoatzz/pretty-mod.git
-cd pretty-mod
-uv sync
-uv run pytest
+gh repo clone zzstoatzz/pretty-mod && cd pretty-mod
+just --list # see https://github.com/casey/just
 ```
