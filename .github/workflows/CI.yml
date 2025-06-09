@@ -11,7 +11,21 @@ on:
       - main
     tags:
       - '*'
+    paths:
+      - pyproject.toml
+      - Cargo.toml
+      - python/**/*.py
+      - src/**/*.rs
+      - tests/**/*.py
+      - scripts/**/*.py
   pull_request:
+    paths:
+      - pyproject.toml
+      - Cargo.toml
+      - python/**/*.py
+      - src/**/*.rs
+      - tests/**/*.py
+      - scripts/**/*.py
   workflow_dispatch:
 
 permissions:
