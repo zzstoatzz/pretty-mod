@@ -2,7 +2,7 @@ import sys
 from unittest.mock import patch
 
 import pytest
-from pretty_mod import display_signature, display_tree
+from pretty_mod import display_signature, display_tree, download_package
 from pretty_mod.cli import main
 
 
@@ -48,6 +48,56 @@ class TestCLIMain:
 
         captured = capsys.readouterr()
         assert "📎 len" in captured.out
+
+
+class TestPackageDownload:
+    def test_download_package(self):
+        """Test downloading a small package from PyPI."""
+        # Use 'six' as it's a small, stable package
+        downloaded = download_package("six")
+
+        # Check that we got a valid path
+        assert downloaded.path
+
+        # Check that the path exists and is a Path object
+        from pathlib import Path
+
+        assert isinstance(downloaded.path, Path)
+        assert downloaded.path.exists()
+        assert downloaded.path.is_dir()
+
+        # The package should contain at least some Python files
+        # (either in the directory itself or in a subdirectory)
+        has_py_files = any(
+            file.suffix == ".py"
+            for file in downloaded.path.rglob("*")
+            if file.is_file()
+        )
+        assert has_py_files, "Downloaded package should contain Python files"
+
+    def test_download_with_quiet_flag(self, capsys):
+        """Test that --quiet suppresses download messages."""
+        # Use a package that's unlikely to be installed
+        test_package = "tinynetrc"  # Small package unlikely to be pre-installed
+
+        with patch.object(
+            sys, "argv", ["pretty-mod", "tree", test_package, "--quiet", "--depth", "1"]
+        ):
+            try:
+                main()
+            except SystemExit:
+                pass  # It's OK if it exits with an error
+
+        captured = capsys.readouterr()
+        # With --quiet, the download message should not appear in stderr
+        assert "not found locally" not in captured.err
+
+    def test_download_nonexistent_package(self):
+        """Test handling of non-existent packages."""
+        with pytest.raises(Exception) as exc_info:
+            download_package("this-package-definitely-does-not-exist-12345")
+
+        assert "not found on PyPI" in str(exc_info.value)
 
     def test_main_keyboard_interrupt(self):
         with patch.object(sys, "argv", ["pretty-mod", "tree", "json"]):
