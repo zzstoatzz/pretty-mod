@@ -55,7 +55,7 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
                 let mut downloader = crate::package_downloader::PackageDownloader::new(root_module_path.to_string());
                 let package_path = downloader.download_and_extract()?;
                 
-                // Add to sys.path temporarily
+                // Add to sys.path temporarily with RAII cleanup
                 let sys = py.import("sys")?;
                 let sys_path = sys.getattr("path")?;
                 
@@ -67,16 +67,27 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
                     &package_path
                 };
                 
-                sys_path.call_method1("insert", (0, parent_dir.to_str().unwrap()))?;
+                let parent_dir_str = parent_dir.to_str().unwrap();
+                sys_path.call_method1("insert", (0, parent_dir_str))?;
+                
+                // Create a guard that will remove the path when dropped
+                struct PathGuard<'py> {
+                    sys_path: &'py pyo3::Bound<'py, pyo3::PyAny>,
+                    path: &'py str,
+                }
+                
+                impl<'py> Drop for PathGuard<'py> {
+                    fn drop(&mut self) {
+                        // Best effort removal - don't panic in drop
+                        let _ = self.sys_path.call_method1("remove", (self.path,));
+                    }
+                }
+                
+                let _guard = PathGuard { sys_path: &sys_path, path: parent_dir_str };
                 
                 // Try exploration again
                 let explorer = ModuleTreeExplorer::new(base_name.to_string(), max_depth);
-                let result = explorer.explore(py);
-                
-                // Remove from sys.path
-                sys_path.call_method1("remove", (parent_dir.to_str().unwrap(),))?;
-                
-                match result {
+                match explorer.explore(py) {
                     Ok(tree) => {
                         let tree_str = format_tree_display(py, &tree, base_name)?;
                         py.import("builtins")?
