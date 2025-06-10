@@ -109,9 +109,15 @@ pretty-mod tree requests --depth 3
 pretty-mod sig json:loads
 pretty-mod sig os.path:join
 
-# inspect libraries you don't have installed
-uvx --with fastapi pretty-mod tree fastapi.routing
+# Explore packages without installing them (automatically downloads from PyPI)
+pretty-mod tree django
+pretty-mod tree flask --depth 1
 
+# Use --quiet to suppress download messages (useful for LLM consumption)
+pretty-mod tree requests --quiet
+
+# Or install pretty-mod alongside the package you want to explore
+uvx --with fastapi pretty-mod tree fastapi.routing
 uvx --with fastapi pretty-mod sig fastapi.routing:run_endpoint_function
 ```
 

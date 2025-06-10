@@ -314,22 +314,3 @@ impl DownloadedPackage {
     }
 }
 
-/// Python-facing function to download a package
-#[pyfunction]
-pub fn download_package(py: Python, package_name: &str) -> PyResult<PyObject> {
-    let mut downloader = PackageDownloader::new(package_name.to_string());
-    let path = downloader.download_and_extract()?;
-
-    // Transfer ownership of temp_dir to Python object
-    let temp_dir = downloader
-        .temp_dir
-        .take()
-        .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Temp dir not created"))?;
-
-    let downloaded = DownloadedPackage {
-        path,
-        _temp_dir: temp_dir,
-    };
-
-    Ok(downloaded.into_pyobject(py)?.into_any().unbind())
-}

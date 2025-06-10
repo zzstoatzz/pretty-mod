@@ -2,7 +2,7 @@ import sys
 from unittest.mock import patch
 
 import pytest
-from pretty_mod import display_signature, display_tree, download_package
+from pretty_mod import display_signature, display_tree
 from pretty_mod.cli import main
 
 
@@ -51,29 +51,15 @@ class TestCLIMain:
 
 
 class TestPackageDownload:
-    def test_download_package(self):
-        """Test downloading a small package from PyPI."""
-        # Use 'six' as it's a small, stable package
-        downloaded = download_package("six")
+    def test_auto_download_functionality(self, capsys):
+        """Test that packages are automatically downloaded when not installed."""
+        # Use 'six' as it's a small, stable package unlikely to be installed
+        # If it's already installed, the test will still pass (it just won't download)
+        display_tree("six", 1)
 
-        # Check that we got a valid path
-        assert downloaded.path
-
-        # Check that the path exists and is a Path object
-        from pathlib import Path
-
-        assert isinstance(downloaded.path, Path)
-        assert downloaded.path.exists()
-        assert downloaded.path.is_dir()
-
-        # The package should contain at least some Python files
-        # (either in the directory itself or in a subdirectory)
-        has_py_files = any(
-            file.suffix == ".py"
-            for file in downloaded.path.rglob("*")
-            if file.is_file()
-        )
-        assert has_py_files, "Downloaded package should contain Python files"
+        captured = capsys.readouterr()
+        # Should show the tree structure regardless of whether it was downloaded
+        assert "📦 six" in captured.out
 
     def test_download_with_quiet_flag(self, capsys):
         """Test that --quiet suppresses download messages."""
@@ -92,12 +78,27 @@ class TestPackageDownload:
         # With --quiet, the download message should not appear in stderr
         assert "not found locally" not in captured.err
 
-    def test_download_nonexistent_package(self):
+    def test_download_nonexistent_package(self, capsys):
         """Test handling of non-existent packages."""
-        with pytest.raises(Exception) as exc_info:
-            download_package("this-package-definitely-does-not-exist-12345")
+        # Try to display a tree for a package that doesn't exist
+        with pytest.raises(SystemExit) as exc_info:
+            with patch.object(
+                sys,
+                "argv",
+                [
+                    "pretty-mod",
+                    "tree",
+                    "this-package-definitely-does-not-exist-12345",
+                    "--depth",
+                    "1",
+                ],
+            ):
+                main()
 
-        assert "not found on PyPI" in str(exc_info.value)
+        assert exc_info.value.code == 1  # type: ignore[attr-defined]
+
+        captured = capsys.readouterr()
+        assert "Error:" in captured.err
 
     def test_main_keyboard_interrupt(self):
         with patch.object(sys, "argv", ["pretty-mod", "tree", "json"]):
