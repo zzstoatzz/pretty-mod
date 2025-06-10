@@ -21,21 +21,24 @@ a module tree explorer for LLMs (and humans)
 └── 📦 tool
     └── ⚡ functions: main
 
-» uvx pretty-mod sig json:dumps
-📎 dumps
+» uvx pretty-mod sig fastmcp:FastMCP
+📎 FastMCP
 ├── Parameters:
-├── obj
-├── *
-├── skipkeys=False
-├── ensure_ascii=True
-├── check_circular=True
-├── allow_nan=True
-├── cls=None
-├── indent=None
-├── separators=None
-├── default=None
-├── sort_keys=False
-└── **kw
+├── name: str | None=None
+├── instructions: str | None=None
+├── auth: OAuthProvider | None=None
+├── lifespan: Callable[[FastMCP[LifespanResultT]], AbstractAsyncContextManager[LifespanResultT]] | None=None
+├── tags: set[str] | None=None
+├── dependencies: list[str] | None=None
+├── tool_serializer: Callable[[Any], str] | None=None
+├── cache_expiration_seconds: float | None=None
+├── on_duplicate_tools: DuplicateBehavior | None=None
+├── on_duplicate_resources: DuplicateBehavior | None=None
+├── on_duplicate_prompts: DuplicateBehavior | None=None
+├── resource_prefix_format: Literal['protocol', 'path'] | None=None
+├── mask_error_details: bool | None=None
+├── tools: list[Tool | Callable[..., Any]] | None=None
+└── **settings: Any
 ```
 
 ## Installation
@@ -74,7 +77,7 @@ display_tree("collections", max_depth=2)
 ```python
 from pretty_mod import display_signature
 
-# Display the signature of a callable (function or class constructor)
+# Display the signature of a callable (function, class constructor, etc.)
 print(display_signature("json:loads"))
 ```
 
@@ -103,22 +106,20 @@ Pretty-mod includes a command-line interface for quick exploration:
 ```bash
 # Explore module structure
 pretty-mod tree json
+
+# Go deeper into the tree with --depth
 pretty-mod tree requests --depth 3
 
 # Display function signatures  
 pretty-mod sig json:loads
 pretty-mod sig os.path:join
 
-# Explore packages without installing them (automatically downloads from PyPI)
+# Explore packages even without having them installed
 pretty-mod tree django
 pretty-mod tree flask --depth 1
 
-# Use --quiet to suppress download messages (useful for LLM consumption)
+# Use --quiet to suppress download messages when you don't have the package installed
 pretty-mod tree requests --quiet
-
-# Or install pretty-mod alongside the package you want to explore
-uvx --with fastapi pretty-mod tree fastapi.routing
-uvx --with fastapi pretty-mod sig fastapi.routing:run_endpoint_function
 ```
 
 ## Examples
