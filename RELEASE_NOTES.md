@@ -1,27 +1,22 @@
-# Release Notes - v0.1.1 (Unreleased)
+# Release Notes - v0.1.1
 
 ## 🎯 Auto-Download Support
 
-This release adds the ability to explore packages without having them installed! Pretty-mod will automatically download and extract packages from PyPI when needed.
+This release adds the ability to explore packages without having them installed! `pretty-mod` will automatically download and extract packages from PyPI when needed.
 
 ### ✨ New Features
 
 - **Automatic package downloads**: Run `pretty-mod tree django` without having Django installed
 - **`--quiet` flag**: Suppress download messages for cleaner output (especially useful for LLM consumption)
-- **Seamless integration**: Downloads happen transparently within the existing `display_tree` function
 
 ### 🏗️ Architecture Improvements
 
 - **Refactored `lib.rs`**: Split into focused modules (`signature.rs`, `tree_formatter.rs`, `package_downloader.rs`) - reduced from 419 to 157 lines
-- **Clean API**: Package downloading is an implementation detail, not exposed in the public Python API
 - **Added test coverage**: New tests for download functionality and quiet flag
 
 ### 📊 Performance
 
-No regressions! In fact, performance is better than the published v0.1.0:
-- `json`: 31% faster
-- `urllib`: 51% faster
-- `os`: 36% faster
+No regressions!
 
 Download overhead is minimal (~200ms) and only applies to packages not already installed.
 
