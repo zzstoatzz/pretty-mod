@@ -9,14 +9,12 @@ This release adds the ability to explore packages without having them installed!
 - **Automatic package downloads**: Run `pretty-mod tree django` without having Django installed
 - **`--quiet` flag**: Suppress download messages for cleaner output (especially useful for LLM consumption)
 
-### 🏗️ Architecture Improvements
+### 🏗️ Development Improvements
 
-- **Refactored `lib.rs`**: Split into focused modules (`signature.rs`, `tree_formatter.rs`, `package_downloader.rs`) - reduced from 419 to 157 lines
-- **Added test coverage**: New tests for download functionality and quiet flag
+- **Refactored `lib.rs`**: Split into focused modules (`signature.rs`, `tree_formatter.rs`, `package_downloader.rs`)
+- **Cross-platform builds**: Fixed ARM64 Linux builds by using `manylinux_2_28` and `rustls` for TLS
 
-### 📊 Performance
-
-No regressions!
+### 📦 Installation
 
 Download overhead is minimal (~200ms) and only applies to packages not already installed.
 
