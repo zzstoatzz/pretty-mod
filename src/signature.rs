@@ -1,9 +1,9 @@
 use pyo3::prelude::*;
 
 /// Display a function signature
-pub fn display_signature(py: Python, import_path: &str) -> PyResult<String> {
-    // Try to import the object using import_object which handles both syntaxes
-    let func = match crate::import_object(py, import_path) {
+pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult<String> {
+    // Try to import the object with auto-download support
+    let func = match crate::utils::import_object_with_download(py, import_path, quiet) {
         Ok(obj) => obj,
         Err(e) => {
             return Ok(format!("Error: Could not import {}: {}", import_path, e));

@@ -8,13 +8,17 @@ use tempfile::TempDir;
 #[derive(Debug)]
 pub struct PackageDownloader {
     package_name: String,
+    version_spec: Option<String>,
     temp_dir: Option<TempDir>,
 }
 
 impl PackageDownloader {
     pub fn new(package_name: String) -> Self {
+        // Parse version spec if present
+        let (name, version) = crate::utils::parse_package_spec(&package_name);
         Self {
-            package_name,
+            package_name: name.to_string(),
+            version_spec: version.map(|v| v.to_string()),
             temp_dir: None,
         }
     }
@@ -69,13 +73,33 @@ impl PackageDownloader {
             PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("Failed to parse JSON: {}", e))
         })?;
 
-        // Get the latest version
-        let latest_version = json["info"]["version"].as_str().ok_or_else(|| {
-            PyErr::new::<pyo3::exceptions::PyValueError, _>("Missing version info")
-        })?;
+        // Determine which version to download
+        let target_version = match &self.version_spec {
+            Some(spec) if spec == "latest" => {
+                // Use the latest version
+                json["info"]["version"].as_str().ok_or_else(|| {
+                    PyErr::new::<pyo3::exceptions::PyValueError, _>("Missing version info")
+                })?
+            }
+            Some(spec) => {
+                // Check if the specific version exists
+                if json["releases"][spec].is_null() {
+                    return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                        format!("Version '{}' not found for package '{}'", spec, self.package_name),
+                    ));
+                }
+                spec
+            }
+            None => {
+                // Default to latest version
+                json["info"]["version"].as_str().ok_or_else(|| {
+                    PyErr::new::<pyo3::exceptions::PyValueError, _>("Missing version info")
+                })?
+            }
+        };
 
-        // Find a wheel or source distribution for the latest version
-        let releases = json["releases"][latest_version].as_array().ok_or_else(|| {
+        // Find a wheel or source distribution for the target version
+        let releases = json["releases"][target_version].as_array().ok_or_else(|| {
             PyErr::new::<pyo3::exceptions::PyValueError, _>("Missing release info")
         })?;
 

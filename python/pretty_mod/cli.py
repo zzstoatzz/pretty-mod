@@ -31,6 +31,11 @@ def main():
     sig_parser.add_argument(
         "import_path", help="Import path to the function (e.g., 'json:loads')"
     )
+    sig_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress download messages",
+    )
 
     args = parser.parse_args()
 
@@ -38,7 +43,7 @@ def main():
         if args.command == "tree":
             display_tree(args.module, args.depth, args.quiet)
         elif args.command == "sig":
-            print(display_signature(args.import_path))
+            print(display_signature(args.import_path, args.quiet))
         else:
             parser.print_help()
             sys.exit(1)

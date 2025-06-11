@@ -1,6 +1,6 @@
 [project]
 name = "pretty-mod"
-description = "A module tree explorer for LLMs (and humans)"
+description = "A python module tree explorer for LLMs (and humans)"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "zzstoatzz", email = "thrast36@gmail.com" }]

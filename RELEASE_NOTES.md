@@ -1,3 +1,22 @@
+# Release Notes - v0.1.2
+
+## 🔧 Code Quality Improvements
+
+### ✨ New Features
+
+- **Version specifiers**: Support for `@version` syntax (e.g., `pretty-mod tree toml@0.10.2`)
+  - Use `@latest` to force download of the latest version
+  - Specify exact versions like `@1.2.3`
+  - Works with both `tree` and `sig` commands
+
+### 🏗️ Technical Improvements
+
+- **Performance**: Use Rust's native `println!` instead of Python's print for better performance
+- **Architecture**: Consolidated shared utilities into a dedicated `utils.rs` module
+- **Code organization**: Moved all implementation details out of `lib.rs`, which now only contains PyO3 bindings
+
+---
+
 # Release Notes - v0.1.1
 
 ## 🎯 Auto-Download Support
