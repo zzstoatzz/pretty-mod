@@ -209,6 +209,7 @@ available color environment variables:
 - `PRETTY_MOD_PARAM_COLOR` - Parameter names (default: #708090)
 - `PRETTY_MOD_TYPE_COLOR` - Type annotations (default: #778899)
 - `PRETTY_MOD_DEFAULT_COLOR` - Default values (default: #8FBC8F)
+- `PRETTY_MOD_WARNING_COLOR` - Warning messages (default: #DAA520)
 
 ## examples
 
