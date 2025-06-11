@@ -1,3 +1,54 @@
+# Release Notes - v0.2.0
+
+## 🎨 Customizable Display & Colors
+
+This release introduces customizable display characters and beautiful color output, making `pretty-mod` more visually appealing and adaptable to different terminal environments.
+
+### 🚨 Breaking Changes
+- **Color output by default**: Tree and signature displays now include ANSI color codes
+- **Minor version bump**: Due to visual output changes, this is a minor version release
+
+### ✨ New Features
+
+- **🎨 Color Support**: Beautiful earth-tone/pastel color scheme
+  - Modules: Saddle brown (#8B7355)
+  - Functions: Olive drab (#6B8E23)
+  - Classes: Steel blue (#4682B4)
+  - Constants: Rosy brown (#BC8F8F)
+  - And more subtle colors for parameters, types, and tree structures
+
+- **🔧 Customizable Display Characters**: Configure via environment variables
+  - `PRETTY_MOD_MODULE_ICON`: Icon for modules (default: 📦)
+  - `PRETTY_MOD_FUNCTION_ICON`: Icon for functions (default: ⚡)
+  - `PRETTY_MOD_CLASS_ICON`: Icon for classes (default: 🔷)
+  - `PRETTY_MOD_CONSTANT_ICON`: Icon for constants (default: 📌)
+  - `PRETTY_MOD_EXPORTS_ICON`: Icon for __all__ exports (default: 📜)
+  - `PRETTY_MOD_SIGNATURE_ICON`: Icon for signatures (default: 📎)
+
+- **🖥️ ASCII Mode**: For terminals without Unicode support
+  ```bash
+  PRETTY_MOD_ASCII=1 pretty-mod tree json
+  ```
+
+- **🚫 Disable Colors**: For clean output or piping
+  ```bash
+  PRETTY_MOD_NO_COLOR=1 pretty-mod tree json
+  # or use the standard NO_COLOR environment variable
+  ```
+
+- **🎯 Custom Colors**: Override any color with hex values
+  ```bash
+  PRETTY_MOD_MODULE_COLOR=#FF6B6B pretty-mod tree json
+  ```
+
+### 🏗️ Technical Improvements
+
+- **Configuration system**: Centralized configuration module with environment variable support
+- **Color rendering**: ANSI 24-bit true color support with automatic hex-to-RGB conversion
+- **Consistent styling**: Both tree and signature displays use the same configuration system
+
+---
+
 # Release Notes - v0.1.2
 
 ## 🔧 Code Quality Improvements

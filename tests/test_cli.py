@@ -1,9 +1,13 @@
+import os
 import sys
 from unittest.mock import patch
 
 import pytest
 from pretty_mod import display_signature, display_tree
 from pretty_mod.cli import main
+
+# Disable colors for testing
+os.environ["PRETTY_MOD_NO_COLOR"] = "1"
 
 
 class TestCLIDisplayFunctions:

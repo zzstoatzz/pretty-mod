@@ -1,3 +1,4 @@
+mod config;
 mod explorer;
 mod module_info;
 mod package_downloader;

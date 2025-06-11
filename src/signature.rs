@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use crate::config::{DisplayConfig, colorize};
 
 /// Display a function signature
 pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult<String> {
@@ -37,11 +38,17 @@ pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult
     };
 
     let inspect = py.import("inspect")?;
+    let config = DisplayConfig::get();
     match inspect.getattr("signature")?.call1((&func,)) {
         Ok(sig) => {
             // Build the formatted output
-            let mut result = format!("📎 {}\n", func_name);
-            result.push_str("├── Parameters:\n");
+            let mut result = format!("{} {}\n", 
+                colorize(&config.signature_icon, &config.color_scheme.signature_color, config),
+                colorize(&func_name, &config.color_scheme.signature_color, config)
+            );
+            result.push_str(&format!("{} Parameters:\n", 
+                colorize(&config.tree_branch, &config.color_scheme.tree_color, config)
+            ));
 
             // Get parameters from signature
             let params_obj = sig.getattr("parameters")?;
@@ -53,7 +60,9 @@ pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult
                 .extract()?;
 
             if params_list.is_empty() {
-                result.push_str("└── (no parameters)");
+                result.push_str(&format!("{} (no parameters)", 
+                    colorize(&config.tree_last, &config.color_scheme.tree_color, config)
+                ));
             } else {
                 let mut has_seen_keyword_only_separator = false;
 
@@ -77,13 +86,17 @@ pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult
                         let next_kind = next_param.getattr("kind")?;
                         let next_kind_name: String = next_kind.getattr("name")?.extract()?;
                         if next_kind_name != "POSITIONAL_ONLY" {
-                            result.push_str("├── /\n");
+                            result.push_str(&format!("{} /\n", 
+                                colorize(&config.tree_branch, &config.color_scheme.tree_color, config)
+                            ));
                         }
                     }
 
                     // Handle keyword-only separator
                     if !has_seen_keyword_only_separator && kind_name == "KEYWORD_ONLY" {
-                        result.push_str("├── *\n");
+                        result.push_str(&format!("{} *\n", 
+                            colorize(&config.tree_branch, &config.color_scheme.tree_color, config)
+                        ));
                         has_seen_keyword_only_separator = true;
                     }
 
@@ -97,7 +110,7 @@ pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult
                         param_str.push_str("**");
                     }
 
-                    param_str.push_str(&name);
+                    param_str.push_str(&colorize(&name, &config.color_scheme.param_color, config));
 
                     // Add type annotation if present
                     let empty = inspect.getattr("_empty")?;
@@ -105,7 +118,9 @@ pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult
                         let annotation_str = annotation.to_string();
                         // Only filter out verbose class representations
                         if !annotation_str.starts_with("<class '") {
-                            param_str.push_str(&format!(": {}", annotation_str));
+                            param_str.push_str(&format!(": {}", 
+                                colorize(&annotation_str, &config.color_scheme.type_color, config)
+                            ));
                         }
                     }
 
@@ -116,7 +131,7 @@ pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult
                         if default_str.len() > 20 {
                             param_str.push_str("...");
                         } else {
-                            param_str.push_str(&default_str);
+                            param_str.push_str(&colorize(&default_str, &config.color_scheme.default_color, config));
                         }
                     }
 
@@ -126,11 +141,14 @@ pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult
                             .map(|r| !r.is(&empty))
                             .unwrap_or(false)
                     {
-                        "└── "
+                        &config.tree_last
                     } else {
-                        "├── "
+                        &config.tree_branch
                     };
-                    result.push_str(&format!("{}{}\n", prefix, param_str));
+                    result.push_str(&format!("{}{}\n", 
+                        colorize(prefix, &config.color_scheme.tree_color, config),
+                        param_str
+                    ));
                 }
             }
 
@@ -138,13 +156,21 @@ pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult
             if let Ok(return_annotation) = sig.getattr("return_annotation") {
                 let empty = inspect.getattr("_empty")?;
                 if !return_annotation.is(&empty) {
-                    result.push_str("└── Returns:\n");
-                    result.push_str(&format!("    └── {}", return_annotation));
+                    result.push_str(&format!("{} Returns:\n", 
+                        colorize(&config.tree_last, &config.color_scheme.tree_color, config)
+                    ));
+                    result.push_str(&format!("    {} {}", 
+                        colorize(&config.tree_last, &config.color_scheme.tree_color, config),
+                        colorize(&return_annotation.to_string(), &config.color_scheme.type_color, config)
+                    ));
                 }
             }
 
             Ok(result)
         }
-        Err(_) => Ok(format!("📎 {} (signature unavailable)", func_name)),
+        Err(_) => Ok(format!("{} {} (signature unavailable)", 
+            colorize(&config.signature_icon, &config.color_scheme.signature_color, config),
+            colorize(&func_name, &config.color_scheme.signature_color, config)
+        )),
     }
 }
