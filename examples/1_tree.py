@@ -17,38 +17,22 @@ display_tree("collections", max_depth=2)
 
 # Using the explorer class directly for more control
 print("\n2️⃣ Using ModuleTreeExplorer for programmatic access:")
-explorer = ModuleTreeExplorer("datetime", max_depth=2)
-tree_data = explorer.explore()
 
-# The tree data is a dictionary with module information
-print(f"\nModule: {tree_data['module']}")
-print(f"Path: {tree_data['path']}")
+# Note: ModuleTreeExplorer provides a lazy interface
+# The tree is only explored when you call get_tree_string() or access the tree property
+explorer = ModuleTreeExplorer("datetime", max_depth=1)
 
-# Access the API information
-api = tree_data.get("api", {})
-print("\nAPI contents:")
-print(f"  Functions: {', '.join(api.get('functions', []))}")
-print(f"  Classes: {', '.join(api.get('classes', []))}")
-print(f"  Constants: {', '.join(api.get('constants', []))}")
-
-# Get the formatted tree string
-print("\n3️⃣ Getting formatted output:")
+# Get the formatted tree string (this triggers exploration)
+print("\nFormatted output:")
 print(explorer.get_tree_string())
 
-# Explore submodules
-print("\n4️⃣ Exploring submodules:")
-if submodules := tree_data.get("submodules", {}):
-    for name, subtree in submodules.items():
-        sub_api = subtree.get("api", {})
-        total = (
-            len(sub_api.get("functions", []))
-            + len(sub_api.get("classes", []))
-            + len(sub_api.get("constants", []))
-        )
-        print(f"  📦 {name}: {total} items")
+# Properties available
+print("\nExplorer properties:")
+print(f"  Root module: {explorer.root_module_path}")
+print(f"  Max depth: {explorer.max_depth}")
 
 # Different depth levels
-print("\n5️⃣ Controlling exploration depth:")
+print("\n3️⃣ Controlling exploration depth:")
 print("\nShallow (depth=1):")
 display_tree("email", max_depth=1)
 
@@ -56,16 +40,16 @@ print("\nDeeper (depth=3):")
 display_tree("email.mime", max_depth=3)
 
 # Auto-download with version
-print("\n6️⃣ Auto-download with version specifiers:")
+print("\n4️⃣ Auto-download with version specifiers:")
 print("\nExploring specific version of a package:")
 display_tree("click@8.0.0", max_depth=1, quiet=True)
 
 # Quiet mode
-print("\n7️⃣ Using quiet mode to suppress download messages:")
+print("\n5️⃣ Using quiet mode to suppress download messages:")
 display_tree("six", max_depth=1, quiet=True)
 
 # Error handling
-print("\n8️⃣ Error handling:")
+print("\n6️⃣ Error handling:")
 try:
     display_tree("module:with:colons", max_depth=1)
 except ValueError as e:
