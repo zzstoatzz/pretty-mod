@@ -22,11 +22,14 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
         ));
     }
     
-    // Extract module name without version specifiers
-    let module_name = root_module_path
+    // Parse package@version syntax
+    let (module_name, _version) = utils::parse_package_spec(root_module_path);
+    
+    // Remove any PEP 508 version specifiers
+    let module_name = module_name
         .split(&['[', '>', '<', '=', '!'][..])
         .next()
-        .unwrap_or(root_module_path)
+        .unwrap_or(module_name)
         .trim();
     
     // First check if module can be imported
@@ -40,7 +43,9 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
                 Ok(tree) => {
                     // Display tree using the wrapped format
                     let tree_str = format_tree_display(py, &tree, module_name)?;
-                    println!("{}", tree_str);
+                    // Use Python's print so it can be captured by pytest
+                    let builtins = py.import("builtins")?;
+                    builtins.call_method1("print", (tree_str,))?;
                     Ok(())
                 }
                 Err(e) => Err(e)
@@ -50,17 +55,24 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
             // Check if it's a module not found error
             let err_str = e.to_string();
             if err_str.contains("No module named") || err_str.contains("ModuleNotFoundError") {
-                // Extract the base package name (first component)
+                // Extract the base package name and preserve version spec if present
                 let base_package = extract_base_package(module_name);
+                let download_spec = if let (_, Some(version)) = utils::parse_package_spec(root_module_path) {
+                    format!("{}@{}", base_package, version)
+                } else {
+                    base_package.to_string()
+                };
                 
                 // Try downloading and importing the base package
-                try_download_and_import(py, base_package, quiet, || {
+                try_download_and_import(py, &download_spec, quiet, || {
                     // Try exploration again with the full module path
                     let explorer = ModuleTreeExplorer::new(module_name.to_string(), max_depth);
                     match explorer.explore(py) {
                         Ok(tree) => {
                             let tree_str = format_tree_display(py, &tree, module_name)?;
-                            println!("{}", tree_str);
+                            // Use Python's print so it can be captured by pytest
+                            let builtins = py.import("builtins")?;
+                            builtins.call_method1("print", (tree_str,))?;
                             Ok(())
                         }
                         Err(e) => Err(e)

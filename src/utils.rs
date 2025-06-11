@@ -13,10 +13,28 @@ impl Drop for PathGuard<'_> {
     }
 }
 
+/// Parse a package specification into name and version
+/// e.g., "package@1.2.3" -> ("package", Some("1.2.3"))
+/// e.g., "package" -> ("package", None)
+pub fn parse_package_spec(spec: &str) -> (&str, Option<&str>) {
+    if let Some((name, version)) = spec.split_once('@') {
+        if version.is_empty() {
+            (spec, None)
+        } else {
+            (name, Some(version))
+        }
+    } else {
+        (spec, None)
+    }
+}
+
 /// Extract the base package name from a module path
 /// e.g., "prefect.server.api" -> "prefect"
 pub fn extract_base_package(module_path: &str) -> &str {
-    // First remove any version specifiers
+    // First parse any @ version specifier
+    let (module_path, _version) = parse_package_spec(module_path);
+    
+    // Then remove any PEP 508 version specifiers
     let module_name = module_path
         .split(&['[', '>', '<', '=', '!'][..])
         .next()
@@ -51,7 +69,10 @@ where
         stderr.call_method0("flush")?;
     }
 
-    // Download and extract the package
+    // Parse package name (without version) for path operations
+    let (base_name, _) = parse_package_spec(package_name);
+    
+    // Download and extract the package (with version if specified)
     let mut downloader =
         crate::package_downloader::PackageDownloader::new(package_name.to_string());
     let package_path = downloader.download_and_extract()?;
@@ -61,8 +82,8 @@ where
     let sys_path = sys.getattr("path")?;
 
     // Determine the right directory to add to sys.path
-    let parent_dir = if package_path.ends_with(package_name)
-        || package_path.ends_with(package_name.replace('-', "_"))
+    let parent_dir = if package_path.ends_with(base_name)
+        || package_path.ends_with(&base_name.replace('-', "_"))
     {
         package_path.parent().unwrap()
     } else {
@@ -93,12 +114,17 @@ pub fn import_object_impl(py: Python, import_path: &str) -> PyResult<PyObject> {
                 "Import path must be in format 'module:object' or 'module.object'",
             ));
         }
-        let (module_name, object_name) = (parts[0], parts[1]);
+        let (module_spec, object_name) = (parts[0], parts[1]);
+        // Parse version spec from module name
+        let (module_name, _version) = parse_package_spec(module_spec);
         let module = py.import(module_name)?;
         module.getattr(object_name)?.extract()
     } else if import_path.contains('.') {
+        // Parse version spec first
+        let (path_without_version, _version) = parse_package_spec(import_path);
+        
         // Dot syntax: try to find where module ends and attribute begins
-        let parts: Vec<&str> = import_path.split('.').collect();
+        let parts: Vec<&str> = path_without_version.split('.').collect();
 
         // Try importing progressively longer module paths
         for i in (1..parts.len()).rev() {
@@ -127,10 +153,12 @@ pub fn import_object_impl(py: Python, import_path: &str) -> PyResult<PyObject> {
         }
 
         // If no valid module found, it might be a top-level module
-        py.import(import_path).map(|m| m.into())
+        let (module_name, _version) = parse_package_spec(path_without_version);
+        py.import(module_name).map(|m| m.into())
     } else {
         // No dots or colons, assume it's a module name
-        py.import(import_path).map(|m| m.into())
+        let (module_name, _version) = parse_package_spec(import_path);
+        py.import(module_name).map(|m| m.into())
     }
 }
 

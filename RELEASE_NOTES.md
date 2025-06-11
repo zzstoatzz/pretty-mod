@@ -2,15 +2,17 @@
 
 ## 🔧 Code Quality Improvements
 
-### ✨ Improvements
+### ✨ New Features
 
-- **Performance**: Removed unnecessary Python print import in favor of native Rust println
+- **Version specifiers**: Support for `@version` syntax (e.g., `pretty-mod tree toml@0.10.2`)
+  - Use `@latest` to force download of the latest version
+  - Specify exact versions like `@1.2.3`
+  - Works with both `tree` and `sig` commands
+
+### 🏗️ Technical Improvements
+
 - **Architecture**: Consolidated shared utilities into a dedicated `utils.rs` module
 - **Code organization**: Moved all implementation details out of `lib.rs`, which now only contains PyO3 bindings
-
-### 🚧 Known Issues
-
-- Version specifiers (e.g., `package==1.2.3`) are not yet supported for auto-download
 
 ---
 
