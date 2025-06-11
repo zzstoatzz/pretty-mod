@@ -5,6 +5,9 @@ a python module tree explorer for LLMs (and humans)
 > [!IMPORTANT]
 > for all versions `>=0.1.0`, wheels for different operating systems are built via `maturin` and published to pypi, install `<0.1.0` for a pure python version
 
+> [!NOTE]
+> Starting from v0.2.0, output includes colors by default. Use `PRETTY_MOD_NO_COLOR=1` to disable.
+
 ```bash
 # Explore module structure
 » uvx pretty-mod tree json
@@ -66,13 +69,13 @@ a python module tree explorer for LLMs (and humans)
 └── 📦 utils
 ```
 
-## Installation
+## installation
 
 ```bash
 uv add pretty-mod
 ```
 
-## Usage
+## usage
 
 ```python
 from pretty_mod import display_tree
@@ -158,11 +161,54 @@ pretty-mod tree prefect.server@2.10.0  # ✅ Works
 pretty-mod tree prefect@2.10.0.server  # ❌ Invalid - version must come last
 ```
 
-## Examples
+## customization
 
-See the [`examples/`](examples/) directory for more detailed usage patterns and advanced features.
+pretty-mod supports extensive customization through environment variables:
 
-## Development
+### display characters
+
+```bash
+# Use ASCII-only mode for terminals without Unicode support
+PRETTY_MOD_ASCII=1 pretty-mod tree json
+
+# Customize individual icons
+PRETTY_MOD_MODULE_ICON="[M]" pretty-mod tree json
+PRETTY_MOD_FUNCTION_ICON="fn" pretty-mod tree json
+PRETTY_MOD_CLASS_ICON="cls" pretty-mod tree json
+```
+
+### colors
+
+pretty-mod uses an earth-tone color scheme by default:
+
+```bash
+# Disable colors entirely
+PRETTY_MOD_NO_COLOR=1 pretty-mod tree json
+# or use the standard NO_COLOR environment variable
+NO_COLOR=1 pretty-mod tree json
+
+# Override specific colors with hex values
+PRETTY_MOD_MODULE_COLOR="#FF6B6B" pretty-mod tree json
+PRETTY_MOD_FUNCTION_COLOR="#4ECDC4" pretty-mod tree json
+```
+
+available color environment variables:
+- `PRETTY_MOD_MODULE_COLOR` - Modules/packages (default: #8B7355)
+- `PRETTY_MOD_FUNCTION_COLOR` - Functions (default: #6B8E23)
+- `PRETTY_MOD_CLASS_COLOR` - Classes (default: #4682B4)
+- `PRETTY_MOD_CONSTANT_COLOR` - Constants (default: #BC8F8F)
+- `PRETTY_MOD_EXPORTS_COLOR` - __all__ exports (default: #9370DB)
+- `PRETTY_MOD_SIGNATURE_COLOR` - Signatures (default: #5F9EA0)
+- `PRETTY_MOD_TREE_COLOR` - Tree structure lines (default: #696969)
+- `PRETTY_MOD_PARAM_COLOR` - Parameter names (default: #708090)
+- `PRETTY_MOD_TYPE_COLOR` - Type annotations (default: #778899)
+- `PRETTY_MOD_DEFAULT_COLOR` - Default values (default: #8FBC8F)
+
+## examples
+
+see the [`examples/`](examples/) directory for more detailed usage patterns and advanced features.
+
+## development
 
 ```bash
 gh repo clone zzstoatzz/pretty-mod && cd pretty-mod
