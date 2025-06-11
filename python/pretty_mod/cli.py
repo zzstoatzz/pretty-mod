@@ -26,6 +26,14 @@ def main():
         action="store_true",
         help="Suppress warnings and informational messages",
     )
+    tree_parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        choices=["pretty", "json"],
+        default="pretty",
+        help="Output format (default: pretty)",
+    )
 
     sig_parser = subparsers.add_parser("sig", help="Display function signature")
     sig_parser.add_argument(
@@ -36,14 +44,25 @@ def main():
         action="store_true",
         help="Suppress download messages",
     )
+    sig_parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        choices=["pretty", "json"],
+        default="pretty",
+        help="Output format (default: pretty)",
+    )
 
     args = parser.parse_args()
 
     try:
         if args.command == "tree":
-            display_tree(args.module, args.depth, args.quiet)
+            # Call display_tree with format parameter
+            display_tree(args.module, args.depth, args.quiet, args.output)
         elif args.command == "sig":
-            print(display_signature(args.import_path, args.quiet))
+            # Call display_signature with format parameter
+            result = display_signature(args.import_path, args.quiet, args.output)
+            print(result)
         else:
             parser.print_help()
             sys.exit(1)

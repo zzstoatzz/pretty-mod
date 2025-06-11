@@ -187,7 +187,7 @@ fn find_signature_recursive<'a>(
 }
 
 /// Format a signature for display
-fn format_signature_display(sig: &FunctionSignature) -> String {
+pub fn format_signature_display(sig: &FunctionSignature) -> String {
     let config = DisplayConfig::get();
     let mut result = format!(
         "{} {}\n",
@@ -243,8 +243,15 @@ fn format_signature_display(sig: &FunctionSignature) -> String {
     result
 }
 
+/// Result of signature discovery
+pub struct SignatureResult {
+    pub signature: Option<FunctionSignature>,
+    #[allow(dead_code)]
+    pub formatted_output: String,
+}
+
 /// Try to get signature from AST parsing
-fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<String> {
+pub fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<SignatureResult> {
     // Parse the full specification first
     let (package_override, path_without_package, version) =
         crate::utils::parse_full_spec(import_path);
@@ -266,7 +273,7 @@ fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<Strin
     };
 
     // Helper function to try exploration and get signature
-    let try_get_signature = |py: Python| -> Option<String> {
+    let try_get_signature = |py: Python| -> Option<FunctionSignature> {
         // For builtin modules (implemented in C), we can't extract signatures from filesystem
         if crate::stdlib::is_builtin_module(module_path) {
             return None;
@@ -276,7 +283,7 @@ fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<Strin
         let explorer = crate::explorer::ModuleTreeExplorer::new(module_path.to_string(), 2);
         if let Ok(module_info) = explorer.explore_module_pure_filesystem(py, module_path) {
             if let Some(sig) = module_info.signatures.get(object_name) {
-                return Some(format_signature_display(sig));
+                return Some(sig.clone());
             }
 
             // Check if it's in __all__ and search recursively
@@ -284,7 +291,7 @@ fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<Strin
                 if all_exports.contains(&object_name.to_string()) {
                     // Use the recursive search function to find it anywhere in the tree
                     if let Some(sig) = find_signature_recursive(&module_info, object_name) {
-                        return Some(format_signature_display(sig));
+                        return Some(sig.clone());
                     }
                 }
             }
@@ -298,7 +305,7 @@ fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<Strin
             if let Ok(root_info) = explorer.explore_module_pure_filesystem(py, root_package) {
                 // Search recursively for the object
                 if let Some(sig) = find_signature_recursive(&root_info, object_name) {
-                    return Some(format_signature_display(sig));
+                    return Some(sig.clone());
                 }
             }
         }
@@ -308,7 +315,10 @@ fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<Strin
 
     // First try direct filesystem exploration
     if let Some(sig) = try_get_signature(py) {
-        return Some(sig);
+        return Some(SignatureResult {
+            signature: Some(sig.clone()),
+            formatted_output: format_signature_display(&sig),
+        });
     }
 
     // Check if this is a stdlib module - if so, don't try to download
@@ -336,17 +346,23 @@ fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<Strin
         download_result = try_get_signature(py);
         Ok(())
     }) {
-        return download_result;
+        if let Some(sig) = download_result {
+            return Some(SignatureResult {
+                signature: Some(sig.clone()),
+                formatted_output: format_signature_display(&sig),
+            });
+        }
     }
 
     None
 }
 
 /// Display a function signature
+#[allow(dead_code)]
 pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult<String> {
     // First try to get signature from AST
-    if let Some(ast_sig) = try_ast_signature(py, import_path, quiet) {
-        return Ok(ast_sig);
+    if let Some(result) = try_ast_signature(py, import_path, quiet) {
+        return Ok(result.formatted_output);
     }
 
     // If AST parsing didn't find it, return a simple message
