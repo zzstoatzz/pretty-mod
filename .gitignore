@@ -20,3 +20,6 @@ target/*
 
 # Temporary files
 temp/
+
+# claude code
+CLAUDE.local.md

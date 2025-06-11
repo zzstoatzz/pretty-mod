@@ -21,6 +21,12 @@ class TestCLIDisplayFunctions:
         assert "Error:" in result
         assert "ModuleNotFoundError" in result
 
+    def test_display_signature_auto_download(self):
+        # Test that sig can auto-download packages
+        result = display_signature("six:print_", quiet=True)
+        assert "📎 print" in result  # The function name is normalized to 'print'
+        # print_ is a function in six that maps to print
+
 
 class TestCLIMain:
     def test_main_with_help(self):
@@ -53,13 +59,31 @@ class TestCLIMain:
 class TestPackageDownload:
     def test_auto_download_functionality(self, capsys):
         """Test that packages are automatically downloaded when not installed."""
-        # Use 'six' as it's a small, stable package unlikely to be installed
-        # If it's already installed, the test will still pass (it just won't download)
-        display_tree("six", 1)
+        # Use 'toml' as it's a small, stable package
+        # Add quiet=True to avoid stderr messages interfering with the test
+        display_tree("toml", 1, quiet=True)
 
         captured = capsys.readouterr()
         # Should show the tree structure regardless of whether it was downloaded
-        assert "📦 six" in captured.out
+        assert "📦 toml" in captured.out
+
+    def test_tree_with_colon_syntax_error(self):
+        """Test that tree rejects module paths with colons."""
+        with pytest.raises(ValueError) as exc_info:
+            display_tree("module:object", 1)
+
+        assert "Invalid module path" in str(exc_info.value)
+        assert "use 'pretty-mod sig'" in str(exc_info.value)
+
+    def test_auto_download_submodule(self, capsys):
+        """Test that submodules trigger download of the base package."""
+        # Use toml.decoder as it's a submodule of toml
+        display_tree("toml.decoder", 1, quiet=True)
+
+        captured = capsys.readouterr()
+        # Should show the decoder submodule
+        assert "📦 toml.decoder" in captured.out
+        assert "functions: load, loads" in captured.out
 
     def test_download_with_quiet_flag(self, capsys):
         """Test that --quiet suppresses download messages."""

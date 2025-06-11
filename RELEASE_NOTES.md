@@ -1,3 +1,19 @@
+# Release Notes - v0.1.2 (Upcoming)
+
+## 🔧 Code Quality Improvements
+
+### ✨ Improvements
+
+- **Performance**: Removed unnecessary Python print import in favor of native Rust println
+- **Architecture**: Consolidated shared utilities into a dedicated `utils.rs` module
+- **Code organization**: Moved all implementation details out of `lib.rs`, which now only contains PyO3 bindings
+
+### 🚧 Known Issues
+
+- Version specifiers (e.g., `package==1.2.3`) are not yet supported for auto-download
+
+---
+
 # Release Notes - v0.1.1
 
 ## 🎯 Auto-Download Support
