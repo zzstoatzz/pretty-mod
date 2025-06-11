@@ -1,11 +1,12 @@
 # pretty-mod
 
-a module tree explorer for LLMs (and humans)
+a python module tree explorer for LLMs (and humans)
 
 > [!IMPORTANT]
 > for all versions `>=0.1.0`, wheels for different operating systems are built via `maturin` and published to pypi, install `<0.1.0` for a pure python version
 
 ```bash
+# Explore module structure
 » uvx pretty-mod tree json
 📦 json
 ├── 📜 __all__: dump, dumps, load, loads, JSONDecoder, JSONDecodeError, JSONEncoder
@@ -21,24 +22,48 @@ a module tree explorer for LLMs (and humans)
 └── 📦 tool
     └── ⚡ functions: main
 
-» uvx pretty-mod sig fastmcp:FastMCP
-📎 FastMCP
+# Inspect function signatures
+» uvx pretty-mod sig json:dumps
+📎 dumps
 ├── Parameters:
-├── name: str | None=None
-├── instructions: str | None=None
-├── auth: OAuthProvider | None=None
-├── lifespan: Callable[[FastMCP[LifespanResultT]], AbstractAsyncContextManager[LifespanResultT]] | None=None
-├── tags: set[str] | None=None
-├── dependencies: list[str] | None=None
-├── tool_serializer: Callable[[Any], str] | None=None
-├── cache_expiration_seconds: float | None=None
-├── on_duplicate_tools: DuplicateBehavior | None=None
-├── on_duplicate_resources: DuplicateBehavior | None=None
-├── on_duplicate_prompts: DuplicateBehavior | None=None
-├── resource_prefix_format: Literal['protocol', 'path'] | None=None
-├── mask_error_details: bool | None=None
-├── tools: list[Tool | Callable[..., Any]] | None=None
-└── **settings: Any
+├── obj
+├── *
+├── skipkeys=False
+├── ensure_ascii=True
+├── check_circular=True
+├── allow_nan=True
+├── cls=None
+├── indent=None
+├── separators=None
+├── default=None
+├── sort_keys=False
+└── **kw
+
+# Auto-download packages from PyPI (no install needed!)
+» uvx pretty-mod tree requests --quiet
+📦 requests
+├── 📜 __all__: delete, get, head, options, patch, post, put, request
+├── ⚡ functions: check_compatibility, delete, get, head, options, patch, post, put, request
+├── 🔷 classes: ConnectTimeout, ConnectionError, DependencyWarning, FileModeWarning, HTTPError, JSONDecodeError, NullHandler, PreparedRequest, ReadTimeout, Request, RequestException, RequestsDependencyWarning, Response, Session, Timeout, TooManyRedirects, URLRequired
+├── 📌 constants: __author__, __author_email__, __build__, __cake__, __copyright__, __description__, __license__, __title__, __url__, codes
+├── 📦 adapters
+│   ├── 🔷 classes: BaseAdapter, HTTPAdapter
+│   └── 📌 constants: DEFAULT_POOL_TIMEOUT, DEFAULT_POOLBLOCK, DEFAULT_POOLSIZE, DEFAULT_RETRIES
+├── 📦 api
+│   └── ⚡ functions: delete, get, head, options, patch, post, put, request
+├── 📦 auth
+│   └── 🔷 classes: AuthBase, HTTPBasicAuth, HTTPDigestAuth, HTTPProxyAuth
+├── 📦 certs
+├── 📦 compat
+├── 📦 cookies
+├── 📦 exceptions
+├── 📦 help
+├── 📦 hooks
+├── 📦 models
+├── 📦 sessions
+├── 📦 status_codes
+├── 📦 structures
+└── 📦 utils
 ```
 
 ## Installation
@@ -103,6 +128,9 @@ print(display_signature("json:loads"))
 
 Pretty-mod includes a command-line interface for quick exploration:
 
+> [!IMPORTANT]
+> all commands below can be run ephemerally with `uvx`, e.g. `uvx pretty-mod tree json`
+
 ```bash
 # Explore module structure
 pretty-mod tree json
@@ -118,8 +146,16 @@ pretty-mod sig os.path:join
 pretty-mod tree django
 pretty-mod tree flask --depth 1
 
-# Use --quiet to suppress download messages when you don't have the package installed
+# Use --quiet to suppress download messages
 pretty-mod tree requests --quiet
+
+# Version specifiers - explore specific versions
+pretty-mod tree toml@0.10.2
+pretty-mod sig toml@0.10.2:loads
+
+# Submodules with version specifiers (correct syntax)
+pretty-mod tree prefect.server@2.10.0  # ✅ Works
+pretty-mod tree prefect@2.10.0.server  # ❌ Invalid - version must come last
 ```
 
 ## Examples

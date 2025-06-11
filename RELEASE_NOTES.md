@@ -1,4 +1,4 @@
-# Release Notes - v0.1.2 (Upcoming)
+# Release Notes - v0.1.2
 
 ## 🔧 Code Quality Improvements
 

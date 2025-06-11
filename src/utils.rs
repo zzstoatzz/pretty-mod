@@ -33,7 +33,7 @@ pub fn parse_package_spec(spec: &str) -> (&str, Option<&str>) {
 pub fn extract_base_package(module_path: &str) -> &str {
     // First parse any @ version specifier
     let (module_path, _version) = parse_package_spec(module_path);
-    
+
     // Then remove any PEP 508 version specifiers
     let module_name = module_path
         .split(&['[', '>', '<', '=', '!'][..])
@@ -71,7 +71,7 @@ where
 
     // Parse package name (without version) for path operations
     let (base_name, _) = parse_package_spec(package_name);
-    
+
     // Download and extract the package (with version if specified)
     let mut downloader =
         crate::package_downloader::PackageDownloader::new(package_name.to_string());
@@ -83,7 +83,7 @@ where
 
     // Determine the right directory to add to sys.path
     let parent_dir = if package_path.ends_with(base_name)
-        || package_path.ends_with(&base_name.replace('-', "_"))
+        || package_path.ends_with(base_name.replace('-', "_"))
     {
         package_path.parent().unwrap()
     } else {
@@ -122,7 +122,7 @@ pub fn import_object_impl(py: Python, import_path: &str) -> PyResult<PyObject> {
     } else if import_path.contains('.') {
         // Parse version spec first
         let (path_without_version, _version) = parse_package_spec(import_path);
-        
+
         // Dot syntax: try to find where module ends and attribute begins
         let parts: Vec<&str> = path_without_version.split('.').collect();
 
