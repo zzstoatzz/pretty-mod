@@ -1,11 +1,11 @@
+use crate::signature;
 use pyo3::prelude::*;
+use ruff_python_ast::{Expr, ExprList, ExprName, Mod, Stmt, StmtAssign};
 use ruff_python_parser::{parse, Mode};
-use ruff_python_ast::{Mod, Stmt, StmtAssign, Expr, ExprName, ExprList};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
-use crate::signature;
 
 /// Function signature information
 #[derive(Serialize, Deserialize, Clone, Debug, IntoPyObject)]
@@ -16,7 +16,7 @@ pub struct FunctionSignature {
 }
 
 /// Rust representation of module information
-#[derive(Serialize, Deserialize, Clone, Debug, IntoPyObject)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, IntoPyObject)]
 pub struct ModuleInfo {
     pub functions: Vec<String>,
     pub classes: Vec<String>,
@@ -52,7 +52,6 @@ impl ModuleInfo {
             ))
         })?;
 
-
         let parsed = parse(&source, Mode::Module.into()).map_err(|e| {
             PyErr::new::<pyo3::exceptions::PySyntaxError, _>(format!(
                 "Failed to parse {}: {:?}",
@@ -60,10 +59,10 @@ impl ModuleInfo {
                 e
             ))
         })?;
-        
+
         let Mod::Module(module) = parsed.into_syntax() else {
             return Err(PyErr::new::<pyo3::exceptions::PySyntaxError, _>(
-                "Expected a module"
+                "Expected a module",
             ));
         };
 
@@ -72,43 +71,51 @@ impl ModuleInfo {
         let mut raw_functions = Vec::new();
         let mut raw_classes = Vec::new();
         let mut raw_constants = Vec::new();
-        
+
         for stmt in &module.body {
             match stmt {
                 Stmt::FunctionDef(func_def) => {
                     if !func_def.name.as_str().starts_with('_') {
                         let name_str = func_def.name.to_string();
                         raw_functions.push(name_str.clone());
-                        
+
                         // Extract signature
                         let parameters = signature::format_parameters(&func_def.parameters);
-                        let return_type = func_def.returns.as_ref().map(|ret| {
-                            signature::format_annotation(ret)
-                        });
-                        
-                        info.signatures.insert(name_str.clone(), FunctionSignature {
-                            name: name_str,
-                            parameters,
-                            return_type,
-                        });
+                        let return_type = func_def
+                            .returns
+                            .as_ref()
+                            .map(|ret| signature::format_annotation(ret));
+
+                        info.signatures.insert(
+                            name_str.clone(),
+                            FunctionSignature {
+                                name: name_str,
+                                parameters,
+                                return_type,
+                            },
+                        );
                     }
                 }
                 Stmt::ClassDef(class_def) => {
                     if !class_def.name.as_str().starts_with('_') {
                         let class_name = class_def.name.to_string();
                         raw_classes.push(class_name.clone());
-                        
+
                         // Look for __init__ method to get constructor signature
                         for stmt in &class_def.body {
                             if let Stmt::FunctionDef(func_def) = stmt {
                                 if func_def.name.as_str() == "__init__" {
-                                    let parameters = signature::format_parameters(&func_def.parameters);
+                                    let parameters =
+                                        signature::format_parameters(&func_def.parameters);
                                     // Store class constructor signature
-                                    info.signatures.insert(class_name.clone(), FunctionSignature {
-                                        name: class_name.clone(),
-                                        parameters,
-                                        return_type: None, // Constructors don't have explicit return types
-                                    });
+                                    info.signatures.insert(
+                                        class_name.clone(),
+                                        FunctionSignature {
+                                            name: class_name.clone(),
+                                            parameters,
+                                            return_type: None, // Constructors don't have explicit return types
+                                        },
+                                    );
                                     break;
                                 }
                             }
@@ -124,7 +131,8 @@ impl ModuleInfo {
                                     let mut all_items = Vec::new();
                                     for elt in elts {
                                         if let Expr::StringLiteral(string_lit) = elt {
-                                            if let Some(single) = string_lit.as_single_part_string() {
+                                            if let Some(single) = string_lit.as_single_part_string()
+                                            {
                                                 all_items.push(single.as_str().to_string());
                                             }
                                         }
@@ -133,8 +141,9 @@ impl ModuleInfo {
                                         info.all_exports = Some(all_items);
                                     }
                                 }
-                            } else if id.as_str().chars().all(|c| c.is_uppercase() || c == '_') 
-                                && !id.as_str().starts_with('_') {
+                            } else if id.as_str().chars().all(|c| c.is_uppercase() || c == '_')
+                                && !id.as_str().starts_with('_')
+                            {
                                 // This is a constant (all uppercase)
                                 raw_constants.push(id.to_string());
                             }
@@ -144,13 +153,22 @@ impl ModuleInfo {
                 _ => {}
             }
         }
-        
+
         // Apply __all__ filter if present
         if let Some(ref all_exports) = info.all_exports {
             let export_set: HashSet<&str> = all_exports.iter().map(|s| s.as_str()).collect();
-            info.functions = raw_functions.into_iter().filter(|f| export_set.contains(f.as_str())).collect();
-            info.classes = raw_classes.into_iter().filter(|c| export_set.contains(c.as_str())).collect();
-            info.constants = raw_constants.into_iter().filter(|c| export_set.contains(c.as_str())).collect();
+            info.functions = raw_functions
+                .into_iter()
+                .filter(|f| export_set.contains(f.as_str()))
+                .collect();
+            info.classes = raw_classes
+                .into_iter()
+                .filter(|c| export_set.contains(c.as_str()))
+                .collect();
+            info.constants = raw_constants
+                .into_iter()
+                .filter(|c| export_set.contains(c.as_str()))
+                .collect();
         } else {
             info.functions = raw_functions;
             info.classes = raw_classes;
@@ -159,5 +177,4 @@ impl ModuleInfo {
 
         Ok(info)
     }
-
 }

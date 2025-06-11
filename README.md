@@ -25,48 +25,35 @@ a python module tree explorer for LLMs (and humans)
 └── 📦 tool
     └── ⚡ functions: main
 
-# Inspect function signatures
-» uvx pretty-mod sig json:dumps
-📎 dumps
-├── Parameters:
-├── obj
-├── *
-├── skipkeys=False
-├── ensure_ascii=True
-├── check_circular=True
-├── allow_nan=True
-├── cls=None
-├── indent=None
-├── separators=None
-├── default=None
-├── sort_keys=False
-└── **kw
-
-# Auto-download packages from PyPI (no install needed!)
-» uvx pretty-mod tree requests --quiet
-📦 requests
-├── 📜 __all__: delete, get, head, options, patch, post, put, request
-├── ⚡ functions: check_compatibility, delete, get, head, options, patch, post, put, request
-├── 🔷 classes: ConnectTimeout, ConnectionError, DependencyWarning, FileModeWarning, HTTPError, JSONDecodeError, NullHandler, PreparedRequest, ReadTimeout, Request, RequestException, RequestsDependencyWarning, Response, Session, Timeout, TooManyRedirects, URLRequired
-├── 📌 constants: __author__, __author_email__, __build__, __cake__, __copyright__, __description__, __license__, __title__, __url__, codes
-├── 📦 adapters
-│   ├── 🔷 classes: BaseAdapter, HTTPAdapter
-│   └── 📌 constants: DEFAULT_POOL_TIMEOUT, DEFAULT_POOLBLOCK, DEFAULT_POOLSIZE, DEFAULT_RETRIES
-├── 📦 api
-│   └── ⚡ functions: delete, get, head, options, patch, post, put, request
-├── 📦 auth
-│   └── 🔷 classes: AuthBase, HTTPBasicAuth, HTTPDigestAuth, HTTPProxyAuth
-├── 📦 certs
-├── 📦 compat
-├── 📦 cookies
-├── 📦 exceptions
-├── 📦 help
-├── 📦 hooks
-├── 📦 models
-├── 📦 sessions
-├── 📦 status_codes
-├── 📦 structures
-└── 📦 utils
+# Inspect function signatures (even if the package is not installed)
+» uv run pretty-mod sig fastmcp:FastMCP --quiet
+📎 FastMCP
+├──  Parameters:
+├──  self
+├──  name: str | None=None
+├──  instructions: str | None=None
+├──  auth: OAuthProvider | None=None
+├──  lifespan: Callable[[FastMCP[LifespanResultT]], AbstractAsyncContextManager[LifespanResultT]] | None=None
+├──  tool_serializer: Callable[[Any], str] | None=None
+├──  cache_expiration_seconds: float | None=None
+├──  on_duplicate_tools: DuplicateBehavior | None=None
+├──  on_duplicate_resources: DuplicateBehavior | None=None
+├──  on_duplicate_prompts: DuplicateBehavior | None=None
+├──  resource_prefix_format: Literal['protocol', 'path'] | None=None
+├──  mask_error_details: bool | None=None
+├──  tools: list[Tool | Callable[..., Any]] | None=None
+├──  dependencies: list[str] | None=None
+├──  include_tags: set[str] | None=None
+├──  exclude_tags: set[str] | None=None
+├──  log_level: str | None=None
+├──  debug: bool | None=None
+├──  host: str | None=None
+├──  port: int | None=None
+├──  sse_path: str | None=None
+├──  message_path: str | None=None
+├──  streamable_http_path: str | None=None
+├──  json_response: bool | None=None
+└──  stateless_http: bool | None=None
 ```
 
 ## installation
@@ -75,7 +62,48 @@ a python module tree explorer for LLMs (and humans)
 uv add pretty-mod
 ```
 
-## usage
+
+## cli
+
+`pretty-mod` includes a command-line interface for shell-based exploration:
+
+> [!IMPORTANT]
+> all commands below can be run ephemerally with `uvx`, e.g. `uvx pretty-mod tree json`
+
+```bash
+# Explore module structure
+pretty-mod tree json
+
+# Go deeper into the tree with --depth
+pretty-mod tree requests --depth 3
+
+# Display function signatures  
+pretty-mod sig json:loads
+pretty-mod sig os.path:join
+
+# Explore packages even without having them installed
+pretty-mod tree django
+pretty-mod tree flask --depth 1
+
+# Use --quiet to suppress download messages
+pretty-mod tree requests --quiet
+
+# Version specifiers - explore specific versions
+pretty-mod tree toml@0.10.2
+pretty-mod sig toml@0.10.2:loads
+
+# Submodules with version specifiers (correct syntax)
+pretty-mod tree prefect.server@2.10.0  # ✅ Works
+pretty-mod tree prefect@2.10.0.server  # ❌ Invalid - version must come last
+
+# Package name differs from module name
+pretty-mod tree pydocket::docket       # PyPI package 'pydocket' contains module 'docket'
+pretty-mod tree pillow::PIL            # PyPI package 'pillow' contains module 'PIL'
+pretty-mod tree pillow::PIL@10.0.0    # Specific version of pillow
+pretty-mod sig pillow::PIL.Image:open  # Works with signatures too
+```
+
+## python sdk
 
 ```python
 from pretty_mod import display_tree
@@ -126,46 +154,6 @@ print(display_signature("json:loads"))
 └── **kw
 ```
 </details>
-
-## CLI
-
-Pretty-mod includes a command-line interface for quick exploration:
-
-> [!IMPORTANT]
-> all commands below can be run ephemerally with `uvx`, e.g. `uvx pretty-mod tree json`
-
-```bash
-# Explore module structure
-pretty-mod tree json
-
-# Go deeper into the tree with --depth
-pretty-mod tree requests --depth 3
-
-# Display function signatures  
-pretty-mod sig json:loads
-pretty-mod sig os.path:join
-
-# Explore packages even without having them installed
-pretty-mod tree django
-pretty-mod tree flask --depth 1
-
-# Use --quiet to suppress download messages
-pretty-mod tree requests --quiet
-
-# Version specifiers - explore specific versions
-pretty-mod tree toml@0.10.2
-pretty-mod sig toml@0.10.2:loads
-
-# Submodules with version specifiers (correct syntax)
-pretty-mod tree prefect.server@2.10.0  # ✅ Works
-pretty-mod tree prefect@2.10.0.server  # ❌ Invalid - version must come last
-
-# Package name differs from module name
-pretty-mod tree pydocket::docket       # PyPI package 'pydocket' contains module 'docket'
-pretty-mod tree pillow::PIL            # PyPI package 'pillow' contains module 'PIL'
-pretty-mod tree pillow::PIL@10.0.0    # Specific version of pillow
-pretty-mod sig pillow::PIL.Image:open  # Works with signatures too
-```
 
 ## customization
 
