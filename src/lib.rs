@@ -3,6 +3,7 @@ mod explorer;
 mod module_info;
 mod package_downloader;
 mod signature;
+mod stdlib;
 mod tree_formatter;
 mod utils;
 
@@ -33,22 +34,14 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
         .unwrap_or(module_path)
         .trim();
     
-    // First check if module can be imported
-    let import_result = py.import(module_name);
-    
-    match import_result {
-        Ok(_) => {
-            // Module exists, do normal exploration
-            let explorer = ModuleTreeExplorer::new(module_name.to_string(), max_depth);
-            match explorer.explore(py) {
-                Ok(tree) => {
-                    // Display tree using the wrapped format
-                    let tree_str = format_tree_display(py, &tree, module_name)?;
-                    println!("{}", tree_str);
-                    Ok(())
-                }
-                Err(e) => Err(e)
-            }
+    // Try to explore the module directly first
+    let explorer = ModuleTreeExplorer::new(module_name.to_string(), max_depth);
+    match explorer.explore(py) {
+        Ok(tree) => {
+            // Display tree using the wrapped format
+            let tree_str = format_tree_display(py, &tree, module_name)?;
+            println!("{}", tree_str);
+            Ok(())
         }
         Err(e) => {
             // Check if it's a module not found error
@@ -71,7 +64,7 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
                 };
                 
                 // Try downloading and importing the package
-                try_download_and_import(py, &download_spec, quiet, || {
+                match try_download_and_import(py, &download_spec, quiet, || {
                     // Try exploration again with the full module path
                     let explorer = ModuleTreeExplorer::new(module_name.to_string(), max_depth);
                     match explorer.explore(py) {
@@ -82,7 +75,31 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
                         }
                         Err(e) => Err(e)
                     }
-                })
+                }) {
+                    Ok(()) => Ok(()),
+                    Err(e) => {
+                        let err_str = e.to_string();
+                        if err_str.contains("No module named") {
+                            let missing = err_str
+                                .split("No module named")
+                                .nth(1)
+                                .unwrap_or("")
+                                .trim()
+                                .trim_matches('\'')
+                                .trim_matches('"')
+                                .split('.')
+                                .next()
+                                .unwrap_or("");
+                            
+                            if !missing.is_empty() {
+                                println!("Cannot explore {}: missing dependency '{}'", module_name, missing);
+                                return Ok(());
+                            }
+                        }
+                        println!("Cannot explore {}", module_name);
+                        Ok(())
+                    }
+                }
             } else {
                 Err(e)
             }

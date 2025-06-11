@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use crate::config::{DisplayConfig, colorize};
 
 /// RAII guard for sys.path cleanup
 struct PathGuard<'py> {
@@ -79,15 +80,18 @@ where
 {
     // Show download message if not quiet
     if !quiet {
+        let config = DisplayConfig::get();
         let sys = py.import("sys")?;
         let stderr = sys.getattr("stderr")?;
-        stderr.call_method1(
-            "write",
-            (format!(
-                "Module '{}' not found locally. Attempting to download from PyPI...\n",
-                package_name
-            ),),
-        )?;
+        
+        // Format the message with colors
+        let message = format!(
+            "{} Module '{}' not found locally. Attempting to download from PyPI...\n",
+            colorize("⚠️ ", &config.color_scheme.warning_color, config),
+            colorize(package_name, &config.color_scheme.module_color, config)
+        );
+        
+        stderr.call_method1("write", (message,))?;
         stderr.call_method0("flush")?;
     }
 
@@ -181,52 +185,5 @@ pub fn import_object_impl(py: Python, import_path: &str) -> PyResult<PyObject> {
         // No dots or colons, assume it's a module name
         let (module_name, _version) = parse_package_spec(import_path);
         py.import(module_name).map(|m| m.into())
-    }
-}
-
-/// Import an object from a module path with auto-download support
-pub fn import_object_with_download(
-    py: Python,
-    import_path: &str,
-    quiet: bool,
-) -> PyResult<PyObject> {
-    // Parse the full specification
-    let (package_override, module_path, version) = parse_full_spec(import_path);
-    
-    // First try normal import with the module path
-    match import_object_impl(py, module_path) {
-        Ok(obj) => Ok(obj),
-        Err(e) => {
-            // Check if it's a module not found error
-            let err_str = e.to_string();
-            if err_str.contains("No module named") || err_str.contains("ModuleNotFoundError") {
-                // Determine which package to download
-                let download_package = if let Some(pkg) = package_override {
-                    // Use the explicit package name
-                    pkg
-                } else {
-                    // Extract the base module name
-                    if module_path.contains(':') {
-                        extract_base_package(module_path.split(':').next().unwrap())
-                    } else {
-                        extract_base_package(module_path)
-                    }
-                };
-
-                // Build download spec with version if present
-                let download_spec = if let Some(v) = version {
-                    format!("{}@{}", download_package, v)
-                } else {
-                    download_package.to_string()
-                };
-
-                // Try downloading and importing
-                try_download_and_import(py, &download_spec, quiet, || {
-                    import_object_impl(py, module_path)
-                })
-            } else {
-                Err(e)
-            }
-        }
     }
 }

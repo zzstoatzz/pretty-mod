@@ -37,6 +37,7 @@ pub struct ColorScheme {
     pub param_color: String,
     pub type_color: String,
     pub default_color: String,
+    pub warning_color: String,
 }
 
 impl Default for ColorScheme {
@@ -53,6 +54,7 @@ impl Default for ColorScheme {
             param_color: "#708090".to_string(),     // Slate gray
             type_color: "#778899".to_string(),      // Light slate gray
             default_color: "#8FBC8F".to_string(),   // Dark sea green
+            warning_color: "#DAA520".to_string(),   // Goldenrod
         }
     }
 }
@@ -164,6 +166,9 @@ impl DisplayConfig {
         }
         if let Ok(val) = env::var("PRETTY_MOD_DEFAULT_COLOR") {
             config.color_scheme.default_color = val;
+        }
+        if let Ok(val) = env::var("PRETTY_MOD_WARNING_COLOR") {
+            config.color_scheme.warning_color = val;
         }
 
         config

@@ -1,10 +1,19 @@
 use pyo3::prelude::*;
 use ruff_python_parser::{parse, Mode};
-use ruff_python_ast::{Mod, Stmt, StmtFunctionDef, StmtClassDef, StmtAssign, Expr, ExprName, ExprList};
+use ruff_python_ast::{Mod, Stmt, StmtAssign, Expr, ExprName, ExprList};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
+use crate::signature;
+
+/// Function signature information
+#[derive(Serialize, Deserialize, Clone, Debug, IntoPyObject)]
+pub struct FunctionSignature {
+    pub name: String,
+    pub parameters: String,
+    pub return_type: Option<String>,
+}
 
 /// Rust representation of module information
 #[derive(Serialize, Deserialize, Clone, Debug, IntoPyObject)]
@@ -15,6 +24,7 @@ pub struct ModuleInfo {
     pub imports: Vec<String>,
     pub submodules: HashMap<String, ModuleInfo>,
     pub all_exports: Option<Vec<String>>,
+    pub signatures: HashMap<String, FunctionSignature>,
 }
 
 impl ModuleInfo {
@@ -26,6 +36,7 @@ impl ModuleInfo {
             imports: Vec::new(),
             submodules: HashMap::new(),
             all_exports: None,
+            signatures: HashMap::new(),
         }
     }
 
@@ -64,14 +75,44 @@ impl ModuleInfo {
         
         for stmt in &module.body {
             match stmt {
-                Stmt::FunctionDef(StmtFunctionDef { name, .. }) => {
-                    if !name.as_str().starts_with('_') {
-                        raw_functions.push(name.to_string());
+                Stmt::FunctionDef(func_def) => {
+                    if !func_def.name.as_str().starts_with('_') {
+                        let name_str = func_def.name.to_string();
+                        raw_functions.push(name_str.clone());
+                        
+                        // Extract signature
+                        let parameters = signature::format_parameters(&func_def.parameters);
+                        let return_type = func_def.returns.as_ref().map(|ret| {
+                            signature::format_annotation(ret)
+                        });
+                        
+                        info.signatures.insert(name_str.clone(), FunctionSignature {
+                            name: name_str,
+                            parameters,
+                            return_type,
+                        });
                     }
                 }
-                Stmt::ClassDef(StmtClassDef { name, .. }) => {
-                    if !name.as_str().starts_with('_') {
-                        raw_classes.push(name.to_string());
+                Stmt::ClassDef(class_def) => {
+                    if !class_def.name.as_str().starts_with('_') {
+                        let class_name = class_def.name.to_string();
+                        raw_classes.push(class_name.clone());
+                        
+                        // Look for __init__ method to get constructor signature
+                        for stmt in &class_def.body {
+                            if let Stmt::FunctionDef(func_def) = stmt {
+                                if func_def.name.as_str() == "__init__" {
+                                    let parameters = signature::format_parameters(&func_def.parameters);
+                                    // Store class constructor signature
+                                    info.signatures.insert(class_name.clone(), FunctionSignature {
+                                        name: class_name.clone(),
+                                        parameters,
+                                        return_type: None, // Constructors don't have explicit return types
+                                    });
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
                 Stmt::Assign(StmtAssign { targets, value, .. }) => {
@@ -83,7 +124,9 @@ impl ModuleInfo {
                                     let mut all_items = Vec::new();
                                     for elt in elts {
                                         if let Expr::StringLiteral(string_lit) = elt {
-                                            all_items.push(string_lit.value.to_string());
+                                            if let Some(single) = string_lit.as_single_part_string() {
+                                                all_items.push(single.as_str().to_string());
+                                            }
                                         }
                                     }
                                     if !all_items.is_empty() {

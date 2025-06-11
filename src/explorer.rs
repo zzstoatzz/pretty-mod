@@ -152,7 +152,7 @@ impl ModuleTreeExplorer {
     }
 
     /// Pure filesystem-based module discovery (similar to ty/ruff approach)
-    fn explore_module_pure_filesystem(
+    pub fn explore_module_pure_filesystem(
         &self,
         py: Python,
         module_path: &str,
@@ -161,7 +161,13 @@ impl ModuleTreeExplorer {
         let parts: Vec<&str> = module_path.split('.').collect();
 
         // Find the root module's filesystem path
-        let (root_path, start_index) = self.find_module_path_filesystem(py, &parts)?;
+        let (root_path, start_index) = match self.find_module_path_filesystem(py, &parts) {
+            Ok(result) => result,
+            Err(e) => {
+                return Err(e);
+            }
+        };
+        
 
         // Build the module tree from the found path
         // Use start_index+1 to skip the part that was already resolved
