@@ -1,3 +1,60 @@
+# Release Notes - 0.2.2
+
+## 🚀 comprehensive import chain resolution system
+
+this release delivers the most requested feature: intuitive import chain resolution. no more guessing where symbols live in complex packages.
+
+### ✨ major features
+
+- **import chain resolution**: `prefect:flow`, `fastapi:FastAPI`, and `fastmcp:FastMCP` now just work
+  - automatically resolves re-exported symbols to their implementation
+  - pattern-based resolution for known library structures
+  - smart fallback for unknown patterns
+
+- **enhanced method signatures**: complete support for extracting signatures from classes
+  - `__init__` methods for class constructors
+  - `__call__` methods for callable instances
+  - proper scope tracking distinguishes methods from functions
+
+- **smart download management**: no more duplicate "downloading package" messages
+  - intelligent caching during resolution attempts
+  - efficient fallback strategies
+
+### 🔧 technical implementation
+
+- **ImportChainResolver**: pattern-based resolution engine
+  - handles namespace packages transparently
+  - integrated download logic for missing packages
+  - extensible pattern matching for new libraries
+
+- **SemanticAnalyzer**: scope-aware ast visitor
+  - tracks module → class → function context
+  - distinguishes methods from functions accurately
+  - stores signatures under multiple keys for flexible lookup
+
+### 📊 examples that now work
+
+```bash
+# these all resolve automatically
+uv run pretty-mod sig prefect:flow        # → FlowDecorator.__call__
+uv run pretty-mod sig fastapi:FastAPI     # → FastAPI.__init__
+uv run pretty-mod sig pathlib:Path        # → Path.__init__
+
+# direct access still works
+uv run pretty-mod sig prefect.flows:FlowDecorator
+uv run pretty-mod sig pathlib.Path:exists
+```
+
+### 🐛 fixes
+
+- duplicate download messages eliminated
+- method signatures now correctly show self parameter
+- namespace package exploration improved
+
+this release closes issues #13, #14, and #15 in a single comprehensive implementation.
+
+---
+
 # Release Notes - v0.2.1
 
 ## 📊 JSON Output Support & Better Type Annotation Handling
