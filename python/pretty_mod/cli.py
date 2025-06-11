@@ -11,7 +11,9 @@ from ._pretty_mod import display_signature, display_tree
 def main():
     """CLI entry point."""
 
-    parser = argparse.ArgumentParser(description="Module tree exploration CLI")
+    parser = argparse.ArgumentParser(
+        prog="pretty-mod", description="Module tree exploration CLI"
+    )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     tree_parser = subparsers.add_parser("tree", help="Display module tree structure")
@@ -22,6 +24,7 @@ def main():
         "--depth", type=int, default=2, help="Maximum depth to explore (default: 2)"
     )
     tree_parser.add_argument(
+        "-q",
         "--quiet",
         action="store_true",
         help="Suppress warnings and informational messages",
@@ -40,6 +43,7 @@ def main():
         "import_path", help="Import path to the function (e.g., 'json:loads')"
     )
     sig_parser.add_argument(
+        "-q",
         "--quiet",
         action="store_true",
         help="Suppress download messages",
