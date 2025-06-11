@@ -43,9 +43,7 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
                 Ok(tree) => {
                     // Display tree using the wrapped format
                     let tree_str = format_tree_display(py, &tree, module_name)?;
-                    // Use Python's print so it can be captured by pytest
-                    let builtins = py.import("builtins")?;
-                    builtins.call_method1("print", (tree_str,))?;
+                    println!("{}", tree_str);
                     Ok(())
                 }
                 Err(e) => Err(e)
@@ -70,9 +68,7 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
                     match explorer.explore(py) {
                         Ok(tree) => {
                             let tree_str = format_tree_display(py, &tree, module_name)?;
-                            // Use Python's print so it can be captured by pytest
-                            let builtins = py.import("builtins")?;
-                            builtins.call_method1("print", (tree_str,))?;
+                            println!("{}", tree_str);
                             Ok(())
                         }
                         Err(e) => Err(e)

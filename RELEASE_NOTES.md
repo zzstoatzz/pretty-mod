@@ -11,6 +11,7 @@
 
 ### 🏗️ Technical Improvements
 
+- **Performance**: Use Rust's native `println!` instead of Python's print for better performance
 - **Architecture**: Consolidated shared utilities into a dedicated `utils.rs` module
 - **Code organization**: Moved all implementation details out of `lib.rs`, which now only contains PyO3 bindings
 
