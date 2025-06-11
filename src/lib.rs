@@ -1,5 +1,6 @@
 mod config;
 mod explorer;
+mod import_resolver;
 mod module_info;
 mod output_format;
 mod package_downloader;

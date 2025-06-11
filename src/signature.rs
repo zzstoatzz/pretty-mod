@@ -1,5 +1,6 @@
 use crate::config::{colorize, DisplayConfig};
 use crate::module_info::{FunctionSignature, ModuleInfo};
+use crate::import_resolver::ImportChainResolver;
 use pyo3::prelude::*;
 use ruff_python_ast::{Expr, ParameterWithDefault, Parameters};
 
@@ -315,6 +316,15 @@ pub fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<S
 
     // First try direct filesystem exploration
     if let Some(sig) = try_get_signature(py) {
+        return Some(SignatureResult {
+            signature: Some(sig.clone()),
+            formatted_output: format_signature_display(&sig),
+        });
+    }
+
+    // If not found directly, try following import chains for known patterns
+    let resolver = ImportChainResolver::new();
+    if let Some(sig) = resolver.resolve_symbol_signature(py, module_path, object_name) {
         return Some(SignatureResult {
             signature: Some(sig.clone()),
             formatted_output: format_signature_display(&sig),

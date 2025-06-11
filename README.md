@@ -24,7 +24,7 @@ a python module tree explorer for LLMs (and humans)
     └── ⚡ functions: main
 
 # Inspect function signatures (even if the package is not installed)
-» uv run pretty-mod sig fastmcp:FastMCP --quiet
+» uvx pretty-mod sig fastmcp:FastMCP --quiet
 📎 FastMCP
 ├──  Parameters:
 ├──  self

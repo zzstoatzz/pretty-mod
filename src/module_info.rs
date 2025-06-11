@@ -1,4 +1,4 @@
-use crate::{signature, semantic};
+use crate::{semantic, signature};
 use pyo3::prelude::*;
 use ruff_python_ast::{Expr, ExprList, ExprName, Mod, Stmt, StmtAssign};
 use ruff_python_parser::{parse, Mode};
@@ -68,9 +68,9 @@ impl ModuleInfo {
 
         // Try enhanced semantic analysis first
         let mut analyzer = semantic::SemanticAnalyzer::new();
-        if let Ok(_) = analyzer.analyze_file(file_path) {
+        if analyzer.analyze_file(file_path).is_ok() {
             // Extract signatures using semantic analysis (includes methods!)
-            if let Ok(_) = analyzer.extract_module_info(&mut info) {
+            if analyzer.extract_module_info(&mut info).is_ok() {
                 // Semantic analysis succeeded - we now have method signatures too
             }
         }
