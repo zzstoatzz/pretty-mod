@@ -159,6 +159,12 @@ pretty-mod sig toml@0.10.2:loads
 # Submodules with version specifiers (correct syntax)
 pretty-mod tree prefect.server@2.10.0  # ✅ Works
 pretty-mod tree prefect@2.10.0.server  # ❌ Invalid - version must come last
+
+# Package name differs from module name
+pretty-mod tree pydocket::docket       # PyPI package 'pydocket' contains module 'docket'
+pretty-mod tree pillow::PIL            # PyPI package 'pillow' contains module 'PIL'
+pretty-mod tree pillow::PIL@10.0.0    # Specific version of pillow
+pretty-mod sig pillow::PIL.Image:open  # Works with signatures too
 ```
 
 ## customization
@@ -203,6 +209,7 @@ available color environment variables:
 - `PRETTY_MOD_PARAM_COLOR` - Parameter names (default: #708090)
 - `PRETTY_MOD_TYPE_COLOR` - Type annotations (default: #778899)
 - `PRETTY_MOD_DEFAULT_COLOR` - Default values (default: #8FBC8F)
+- `PRETTY_MOD_WARNING_COLOR` - Warning messages (default: #DAA520)
 
 ## examples
 

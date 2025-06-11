@@ -1,8 +1,8 @@
 # Release Notes - v0.2.0
 
-## 🎨 Customizable Display & Colors
+## 🎨 Customizable Display & Colors + Enhanced Signature Support
 
-This release introduces customizable display characters and color output, making `pretty-mod` more visually appealing and adaptable to different terminal environments.
+This release introduces customizable display characters, color output, full type annotation support in signatures, and a new double-colon syntax for handling packages where the PyPI name differs from the module name.
 
 ### 🚨 Breaking Changes
 - **Color output by default**: Tree and signature displays now include ANSI color codes
@@ -10,11 +10,24 @@ This release introduces customizable display characters and color output, making
 
 ### ✨ New Features
 
+- **🔗 Double-colon syntax**: Handle packages where PyPI name differs from module name
+  - `pretty-mod tree pydocket::docket` - Download 'pydocket' package, explore 'docket' module
+  - `pretty-mod tree pillow::PIL` - Download 'pillow' package, explore 'PIL' module
+  - Works with version specifiers: `pretty-mod tree pillow::PIL@10.0.0`
+  - Works with signatures: `pretty-mod sig pillow::PIL.Image:open`
+
+- **📝 Full Type Annotation Support**: Signatures now display complete type information
+  - Union types: `str | None`
+  - Generic types: `list[Tool | Callable[..., Any]]`
+  - Literal types: `Literal['protocol', 'path']`
+  - Complex nested types properly rendered from AST
+
 - **🎨 Color Support**: Earth-tone/pastel color scheme
   - Modules: Saddle brown (#8B7355)
   - Functions: Olive drab (#6B8E23)
   - Classes: Steel blue (#4682B4)
   - Constants: Rosy brown (#BC8F8F)
+  - Warning messages: Goldenrod (#DAA520)
   - And more subtle colors for parameters, types, and tree structures
 
 - **🔧 Customizable Display Characters**: Configure via environment variables
@@ -46,6 +59,14 @@ This release introduces customizable display characters and color output, making
 - **Configuration system**: Centralized configuration module with environment variable support
 - **Color rendering**: ANSI 24-bit true color support with automatic hex-to-RGB conversion
 - **Consistent styling**: Both tree and signature displays use the same configuration system
+- **Enhanced AST parsing**: Better handling of complex type annotations and expressions
+- **Code organization**: Consolidated signature parsing logic for better maintainability
+
+### 🐛 Bug Fixes
+
+- **Stdlib module handling**: Built-in modules no longer trigger PyPI download attempts
+- **Signature discovery**: Improved recursive search for symbols exported in `__all__`
+- **Download messages**: Colored warning messages for better visibility
 
 ---
 

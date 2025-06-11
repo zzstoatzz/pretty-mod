@@ -43,28 +43,27 @@ class TestImportObject:
 
 class TestDisplaySignature:
     def test_display_signature_simple_function(self):
-        # Test with a built-in function that can be imported
+        # Test with a built-in function (C-based, no AST available)
         result = display_signature("builtins:len")
         assert "📎 len" in result
-        assert "Parameters:" in result
+        assert "signature not available" in result
 
     def test_display_signature_with_module_colon_syntax(self):
-        # Test with sys:exit
+        # Test with sys:exit (C-based module)
         result = display_signature("sys:exit")
         assert "📎 exit" in result
-        assert "Parameters:" in result
+        assert "signature not available" in result
 
     def test_display_signature_non_callable(self):
         # Test with non-callable object
         result = display_signature("sys:version_info")
-        assert "Error:" in result
-        assert "not callable" in result
+        assert "📎 version_info" in result
+        assert "signature not available" in result
 
     def test_display_signature_nonexistent(self):
         # Test with nonexistent import
         result = display_signature("nonexistent.function")
-        assert "Error:" in result
-        assert "Could not import" in result
+        assert "signature not available" in result
 
 
 class TestIntegration:

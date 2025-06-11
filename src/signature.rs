@@ -1,176 +1,318 @@
 use pyo3::prelude::*;
+use ruff_python_ast::{Parameters, ParameterWithDefault, Expr};
 use crate::config::{DisplayConfig, colorize};
+use crate::module_info::{ModuleInfo, FunctionSignature};
+
+// ===== AST Parameter Parsing =====
+
+/// Extract signature information from AST parameters
+pub fn format_parameters(params: &Parameters) -> String {
+    let mut parts = Vec::new();
+    
+    // Handle positional-only parameters
+    if !params.posonlyargs.is_empty() {
+        for param in &params.posonlyargs {
+            parts.push(format_parameter(param));
+        }
+        parts.push("/".to_string());
+    }
+    
+    // Handle regular positional parameters
+    for param in &params.args {
+        parts.push(format_parameter(param));
+    }
+    
+    // Handle *args
+    if let Some(vararg) = &params.vararg {
+        parts.push(format!("*{}", vararg.name.as_str()));
+    } else if !params.kwonlyargs.is_empty() {
+        // If we have keyword-only args but no *args, add a bare *
+        parts.push("*".to_string());
+    }
+    
+    // Handle keyword-only parameters
+    for param in &params.kwonlyargs {
+        parts.push(format_parameter(param));
+    }
+    
+    // Handle **kwargs
+    if let Some(kwarg) = &params.kwarg {
+        parts.push(format!("**{}", kwarg.name.as_str()));
+    }
+    
+    parts.join(", ")
+}
+
+fn format_parameter(param: &ParameterWithDefault) -> String {
+    let mut result = param.parameter.name.as_str().to_string();
+    
+    // Add type annotation if present
+    if let Some(annotation) = &param.parameter.annotation {
+        result.push_str(": ");
+        result.push_str(&format_annotation(annotation));
+    }
+    
+    // Add default value if present
+    if let Some(default) = &param.default {
+        result.push('=');
+        result.push_str(&format_default(default));
+    }
+    
+    result
+}
+
+pub fn format_annotation(expr: &Expr) -> String {
+    match expr {
+        Expr::Name(name) => name.id.as_str().to_string(),
+        Expr::Attribute(attr) => {
+            format!("{}.{}", format_annotation(&attr.value), attr.attr.as_str())
+        }
+        Expr::Subscript(sub) => {
+            format!("{}[{}]", format_annotation(&sub.value), format_annotation(&sub.slice))
+        }
+        Expr::Tuple(tuple) => {
+            let items: Vec<String> = tuple.elts.iter().map(format_annotation).collect();
+            items.join(", ")
+        }
+        Expr::List(list) => {
+            let items: Vec<String> = list.elts.iter().map(format_annotation).collect();
+            format!("[{}]", items.join(", "))
+        }
+        Expr::BinOp(binop) => {
+            // Handle union types (e.g., str | None)
+            format!("{} | {}", format_annotation(&binop.left), format_annotation(&binop.right))
+        }
+        Expr::NoneLiteral(_) => "None".to_string(),
+        Expr::EllipsisLiteral(_) => "...".to_string(),
+        Expr::StringLiteral(str_lit) => {
+            // For Literal['string'] types
+            if let Some(single) = str_lit.as_single_part_string() {
+                format!("'{}'", single.as_str())
+            } else {
+                "'...'".to_string()
+            }
+        }
+        Expr::BooleanLiteral(bool_lit) => {
+            if bool_lit.value { "True" } else { "False" }.to_string()
+        }
+        _ => "...".to_string(), // Fallback for truly complex expressions
+    }
+}
+
+fn format_default(expr: &Expr) -> String {
+    // Format default values
+    match expr {
+        Expr::NoneLiteral(_) => "None".to_string(),
+        Expr::BooleanLiteral(bool_lit) => if bool_lit.value { "True" } else { "False" }.to_string(),
+        Expr::NumberLiteral(num_lit) => {
+            match &num_lit.value {
+                ruff_python_ast::Number::Int(i) => i.to_string(),
+                ruff_python_ast::Number::Float(f) => f.to_string(),
+                ruff_python_ast::Number::Complex { real, imag } => format!("{real}+{imag}j"),
+            }
+        }
+        Expr::StringLiteral(str_lit) => {
+            if let Some(single) = str_lit.as_single_part_string() {
+                format!("\"{}\"", single.as_str())
+            } else {
+                "\"...\"".to_string()
+            }
+        }
+        Expr::Name(name) => name.id.as_str().to_string(),
+        Expr::List(_) => "[]".to_string(),
+        Expr::Dict(_) => "{}".to_string(),
+        Expr::Tuple(tuple) if tuple.elts.is_empty() => "()".to_string(),
+        _ => "...".to_string(), // Complex defaults shown as ellipsis
+    }
+}
+
+// ===== Signature Discovery & Display =====
+
+/// Recursively search for a signature in module info
+fn find_signature_recursive<'a>(module_info: &'a ModuleInfo, name: &str) -> Option<&'a FunctionSignature> {
+    // Check current module
+    if let Some(sig) = module_info.signatures.get(name) {
+        return Some(sig);
+    }
+    
+    // Check submodules
+    for (_, submod) in &module_info.submodules {
+        if let Some(sig) = find_signature_recursive(submod, name) {
+            return Some(sig);
+        }
+    }
+    
+    None
+}
+
+/// Format a signature for display
+fn format_signature_display(sig: &FunctionSignature) -> String {
+    let config = DisplayConfig::get();
+    let mut result = format!("{} {}\n", 
+        colorize(&config.signature_icon, &config.color_scheme.signature_color, config),
+        colorize(&sig.name, &config.color_scheme.signature_color, config)
+    );
+    result.push_str(&format!("{} Parameters:\n", 
+        colorize(&config.tree_branch, &config.color_scheme.tree_color, config)
+    ));
+    
+    // Format parameters
+    if sig.parameters.is_empty() {
+        result.push_str(&format!("{} (no parameters)", 
+            colorize(&config.tree_last, &config.color_scheme.tree_color, config)
+        ));
+    } else {
+        // Split parameters and format each one
+        let params: Vec<&str> = sig.parameters.split(", ").collect();
+        for (i, param) in params.iter().enumerate() {
+            let is_last = i == params.len() - 1 && sig.return_type.is_none();
+            let prefix = if is_last { &config.tree_last } else { &config.tree_branch };
+            result.push_str(&format!("{} {}\n",
+                colorize(prefix, &config.color_scheme.tree_color, config),
+                colorize(param, &config.color_scheme.param_color, config)
+            ));
+        }
+    }
+    
+    // Add return type if present
+    if let Some(return_type) = &sig.return_type {
+        result.push_str(&format!("{} Returns:\n", 
+            colorize(&config.tree_last, &config.color_scheme.tree_color, config)
+        ));
+        result.push_str(&format!("    {} {}", 
+            colorize(&config.tree_last, &config.color_scheme.tree_color, config),
+            colorize(return_type, &config.color_scheme.type_color, config)
+        ));
+    }
+    
+    result
+}
+
+/// Try to get signature from AST parsing
+fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<String> {
+    // Parse the full specification first
+    let (package_override, path_without_package, version) = crate::utils::parse_full_spec(import_path);
+    
+    // Parse the import path to extract module and object name
+    let (module_path, object_name) = if path_without_package.contains(':') {
+        let parts: Vec<&str> = path_without_package.split(':').collect();
+        if parts.len() != 2 {
+            return None;
+        }
+        (parts[0], parts[1])
+    } else if let Some(dot_pos) = path_without_package.rfind('.') {
+        (&path_without_package[..dot_pos], &path_without_package[dot_pos + 1..])
+    } else {
+        return None;
+    };
+    
+    // Helper function to try exploration and get signature
+    let try_get_signature = |py: Python| -> Option<String> {
+        
+        // For builtin modules (implemented in C), we can't extract signatures from filesystem
+        if crate::stdlib::is_builtin_module(module_path) {
+            
+            return None;
+        }
+        
+        // First try the exact module path
+        let explorer = crate::explorer::ModuleTreeExplorer::new(module_path.to_string(), 2);
+        if let Ok(module_info) = explorer.explore_module_pure_filesystem(py, module_path) {
+            
+            
+            
+            
+            if let Some(sig) = module_info.signatures.get(object_name) {
+                
+                return Some(format_signature_display(sig));
+            }
+            
+            // Check if it's in __all__ and search recursively
+            if let Some(all_exports) = &module_info.all_exports {
+                if all_exports.contains(&object_name.to_string()) {
+                    // Use the recursive search function to find it anywhere in the tree
+                    if let Some(sig) = find_signature_recursive(&module_info, object_name) {
+                        return Some(format_signature_display(sig));
+                    }
+                }
+            } else {
+                
+            }
+        } else {
+            
+        }
+        
+        // If not found in the module, try the base package exploration
+        if module_path.contains('.') {
+            // Try the root package
+            let root_package = module_path.split('.').next().unwrap();
+            let explorer = crate::explorer::ModuleTreeExplorer::new(root_package.to_string(), 3);
+            if let Ok(root_info) = explorer.explore_module_pure_filesystem(py, root_package) {
+                // Search recursively for the object
+                if let Some(sig) = find_signature_recursive(&root_info, object_name) {
+                    
+                    return Some(format_signature_display(sig));
+                }
+            }
+        }
+        
+        None
+    };
+    
+    // First try direct filesystem exploration
+    if let Some(sig) = try_get_signature(py) {
+        return Some(sig);
+    }
+    
+    // Check if this is a stdlib module - if so, don't try to download
+    if crate::stdlib::is_stdlib_module(module_path) {
+        
+        return None;
+    }
+    
+    // If not found and not stdlib, try downloading the package
+    let download_package = if let Some(pkg) = package_override {
+        pkg
+    } else {
+        crate::utils::extract_base_package(module_path)
+    };
+    
+    let download_spec = if let Some(v) = version {
+        format!("{}@{}", download_package, v)
+    } else {
+        download_package.to_string()
+    };
+    
+    // Try downloading (message is printed by try_download_and_import)
+    // Need to capture the result inside the closure while sys.path is modified
+    let mut download_result = None;
+    if let Ok(()) = crate::utils::try_download_and_import(py, &download_spec, quiet, || {
+        download_result = try_get_signature(py);
+        Ok(())
+    }) {
+        return download_result;
+    }
+    
+    None
+}
 
 /// Display a function signature
 pub fn display_signature(py: Python, import_path: &str, quiet: bool) -> PyResult<String> {
-    // Try to import the object with auto-download support
-    let func = match crate::utils::import_object_with_download(py, import_path, quiet) {
-        Ok(obj) => obj,
-        Err(e) => {
-            return Ok(format!("Error: Could not import {}: {}", import_path, e));
-        }
-    };
-
-    // Check if callable
-    let builtins = py.import("builtins")?;
-    let is_callable = builtins
-        .getattr("callable")?
-        .call1((&func,))?
-        .extract::<bool>()?;
-    if !is_callable {
-        return Ok(format!(
-            "Error: Imported object {} is not callable",
-            import_path
-        ));
+    // First try to get signature from AST
+    if let Some(ast_sig) = try_ast_signature(py, import_path, quiet) {
+        return Ok(ast_sig);
     }
-
-    // Get the function name
-    let func_name = if let Ok(name) = func.bind(py).getattr("__name__") {
-        name.extract::<String>()
-            .unwrap_or_else(|_| "unknown".to_string())
-    } else {
-        // Extract name from import path
-        import_path
-            .split(&[':', '.'][..])
-            .last()
-            .unwrap_or("unknown")
-            .to_string()
-    };
-
-    let inspect = py.import("inspect")?;
+    
+    // If AST parsing didn't find it, return a simple message
     let config = DisplayConfig::get();
-    match inspect.getattr("signature")?.call1((&func,)) {
-        Ok(sig) => {
-            // Build the formatted output
-            let mut result = format!("{} {}\n", 
-                colorize(&config.signature_icon, &config.color_scheme.signature_color, config),
-                colorize(&func_name, &config.color_scheme.signature_color, config)
-            );
-            result.push_str(&format!("{} Parameters:\n", 
-                colorize(&config.tree_branch, &config.color_scheme.tree_color, config)
-            ));
-
-            // Get parameters from signature
-            let params_obj = sig.getattr("parameters")?;
-            let params_values = params_obj.call_method0("values")?;
-            let builtins = py.import("builtins")?;
-            let params_list: Vec<PyObject> = builtins
-                .getattr("list")?
-                .call1((params_values,))?
-                .extract()?;
-
-            if params_list.is_empty() {
-                result.push_str(&format!("{} (no parameters)", 
-                    colorize(&config.tree_last, &config.color_scheme.tree_color, config)
-                ));
-            } else {
-                let mut has_seen_keyword_only_separator = false;
-
-                for (i, param) in params_list.iter().enumerate() {
-                    let is_last = i == params_list.len() - 1;
-                    let param_bound = param.bind(py);
-
-                    // Get parameter properties
-                    let name: String = param_bound.getattr("name")?.extract()?;
-                    let kind = param_bound.getattr("kind")?;
-                    let default = param_bound.getattr("default")?;
-                    let annotation = param_bound.getattr("annotation")?;
-
-                    // Get kind name
-                    let kind_name: String = kind.getattr("name")?.extract()?;
-
-                    // Handle positional-only separator
-                    if kind_name == "POSITIONAL_ONLY" && i < params_list.len() - 1 {
-                        // Check if next param is not POSITIONAL_ONLY
-                        let next_param = params_list[i + 1].bind(py);
-                        let next_kind = next_param.getattr("kind")?;
-                        let next_kind_name: String = next_kind.getattr("name")?.extract()?;
-                        if next_kind_name != "POSITIONAL_ONLY" {
-                            result.push_str(&format!("{} /\n", 
-                                colorize(&config.tree_branch, &config.color_scheme.tree_color, config)
-                            ));
-                        }
-                    }
-
-                    // Handle keyword-only separator
-                    if !has_seen_keyword_only_separator && kind_name == "KEYWORD_ONLY" {
-                        result.push_str(&format!("{} *\n", 
-                            colorize(&config.tree_branch, &config.color_scheme.tree_color, config)
-                        ));
-                        has_seen_keyword_only_separator = true;
-                    }
-
-                    // Format the parameter
-                    let mut param_str = String::new();
-
-                    // Handle special parameters
-                    if kind_name == "VAR_POSITIONAL" {
-                        param_str.push('*');
-                    } else if kind_name == "VAR_KEYWORD" {
-                        param_str.push_str("**");
-                    }
-
-                    param_str.push_str(&colorize(&name, &config.color_scheme.param_color, config));
-
-                    // Add type annotation if present
-                    let empty = inspect.getattr("_empty")?;
-                    if !annotation.is(&empty) {
-                        let annotation_str = annotation.to_string();
-                        // Only filter out verbose class representations
-                        if !annotation_str.starts_with("<class '") {
-                            param_str.push_str(&format!(": {}", 
-                                colorize(&annotation_str, &config.color_scheme.type_color, config)
-                            ));
-                        }
-                    }
-
-                    // Add default value if present
-                    if !default.is(&empty) {
-                        param_str.push('=');
-                        let default_str = default.to_string();
-                        if default_str.len() > 20 {
-                            param_str.push_str("...");
-                        } else {
-                            param_str.push_str(&colorize(&default_str, &config.color_scheme.default_color, config));
-                        }
-                    }
-
-                    let prefix = if is_last
-                        && !sig
-                            .getattr("return_annotation")
-                            .map(|r| !r.is(&empty))
-                            .unwrap_or(false)
-                    {
-                        &config.tree_last
-                    } else {
-                        &config.tree_branch
-                    };
-                    result.push_str(&format!("{}{}\n", 
-                        colorize(prefix, &config.color_scheme.tree_color, config),
-                        param_str
-                    ));
-                }
-            }
-
-            // Check for return annotation
-            if let Ok(return_annotation) = sig.getattr("return_annotation") {
-                let empty = inspect.getattr("_empty")?;
-                if !return_annotation.is(&empty) {
-                    result.push_str(&format!("{} Returns:\n", 
-                        colorize(&config.tree_last, &config.color_scheme.tree_color, config)
-                    ));
-                    result.push_str(&format!("    {} {}", 
-                        colorize(&config.tree_last, &config.color_scheme.tree_color, config),
-                        colorize(&return_annotation.to_string(), &config.color_scheme.type_color, config)
-                    ));
-                }
-            }
-
-            Ok(result)
-        }
-        Err(_) => Ok(format!("{} {} (signature unavailable)", 
-            colorize(&config.signature_icon, &config.color_scheme.signature_color, config),
-            colorize(&func_name, &config.color_scheme.signature_color, config)
-        )),
-    }
+    let object_name = if import_path.contains(':') {
+        import_path.split(':').last().unwrap_or(import_path)
+    } else {
+        import_path.split('.').last().unwrap_or(import_path)
+    };
+    
+    return Ok(format!("{} {} (signature not available)",
+        colorize(&config.signature_icon, &config.color_scheme.signature_color, config),
+        colorize(object_name, &config.color_scheme.signature_color, config)
+    ));
 }

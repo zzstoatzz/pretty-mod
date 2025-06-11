@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use crate::config::{DisplayConfig, colorize};
 
 /// RAII guard for sys.path cleanup
 struct PathGuard<'py> {
@@ -26,6 +27,28 @@ pub fn parse_package_spec(spec: &str) -> (&str, Option<&str>) {
     } else {
         (spec, None)
     }
+}
+
+/// Parse a full module specification with all components
+/// Format: [package::]module[.submodule...][@version]
+/// Returns: (package_override, module_path, version)
+pub fn parse_full_spec(spec: &str) -> (Option<&str>, &str, Option<&str>) {
+    // First extract version from the end
+    let (spec_without_version, version) = if let Some(at_pos) = spec.rfind('@') {
+        let (before, after) = spec.split_at(at_pos);
+        (before, Some(&after[1..]))
+    } else {
+        (spec, None)
+    };
+    
+    // Then parse package::module syntax
+    let (package_override, module_path) = if let Some((package, module)) = spec_without_version.split_once("::") {
+        (Some(package), module)
+    } else {
+        (None, spec_without_version)
+    };
+    
+    (package_override, module_path, version)
 }
 
 /// Extract the base package name from a module path
@@ -57,15 +80,18 @@ where
 {
     // Show download message if not quiet
     if !quiet {
+        let config = DisplayConfig::get();
         let sys = py.import("sys")?;
         let stderr = sys.getattr("stderr")?;
-        stderr.call_method1(
-            "write",
-            (format!(
-                "Module '{}' not found locally. Attempting to download from PyPI...\n",
-                package_name
-            ),),
-        )?;
+        
+        // Format the message with colors
+        let message = format!(
+            "{} Module '{}' not found locally. Attempting to download from PyPI...\n",
+            colorize("⚠️ ", &config.color_scheme.warning_color, config),
+            colorize(package_name, &config.color_scheme.module_color, config)
+        );
+        
+        stderr.call_method1("write", (message,))?;
         stderr.call_method0("flush")?;
     }
 
@@ -159,36 +185,5 @@ pub fn import_object_impl(py: Python, import_path: &str) -> PyResult<PyObject> {
         // No dots or colons, assume it's a module name
         let (module_name, _version) = parse_package_spec(import_path);
         py.import(module_name).map(|m| m.into())
-    }
-}
-
-/// Import an object from a module path with auto-download support
-pub fn import_object_with_download(
-    py: Python,
-    import_path: &str,
-    quiet: bool,
-) -> PyResult<PyObject> {
-    // First try normal import
-    match import_object_impl(py, import_path) {
-        Ok(obj) => Ok(obj),
-        Err(e) => {
-            // Check if it's a module not found error
-            let err_str = e.to_string();
-            if err_str.contains("No module named") || err_str.contains("ModuleNotFoundError") {
-                // Extract the base module name
-                let base_module = if import_path.contains(':') {
-                    extract_base_package(import_path.split(':').next().unwrap())
-                } else {
-                    extract_base_package(import_path)
-                };
-
-                // Try downloading and importing
-                try_download_and_import(py, base_module, quiet, || {
-                    import_object_impl(py, import_path)
-                })
-            } else {
-                Err(e)
-            }
-        }
     }
 }
