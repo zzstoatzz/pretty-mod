@@ -26,7 +26,7 @@ a python module tree explorer for LLMs (and humans)
     └── ⚡ functions: main
 
 # Inspect function signatures
-» uvx pretty-mod sig json:dumps
+» uvx pretty-mod sig fastmcp:FastMCP
 📎 dumps
 ├── Parameters:
 ├── obj
