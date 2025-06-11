@@ -2,11 +2,9 @@
 
 a python module tree explorer for LLMs (and humans)
 
-> [!IMPORTANT]
-> for all versions `>=0.1.0`, wheels for different operating systems are built via `maturin` and published to pypi, install `<0.1.0` for a pure python version
-
 > [!NOTE]
-> Starting from v0.2.0, output includes colors by default. Use `PRETTY_MOD_NO_COLOR=1` to disable.
+> - For all versions `>=0.1.0`, wheels for different operating systems are built via `maturin` and published to PyPI. Install `<0.1.0` for a pure Python version.
+> - Starting from v0.2.0, output includes colors by default. Use `PRETTY_MOD_NO_COLOR=1` to disable.
 
 ```bash
 # Explore module structure
@@ -79,6 +77,10 @@ pretty-mod tree requests --depth 3
 
 # Display function signatures  
 pretty-mod sig json:loads
+
+# Get JSON output for programmatic use
+pretty-mod tree json -o json | jq '.tree.submodules | keys'
+pretty-mod sig json:dumps -o json | jq '.parameters'
 pretty-mod sig os.path:join
 
 # Explore packages even without having them installed

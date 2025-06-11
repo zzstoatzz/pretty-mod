@@ -1,3 +1,28 @@
+# Release Notes - v0.2.1
+
+## 📊 JSON Output Support & Better Type Annotation Handling
+
+This release adds machine-readable JSON output and fixes a critical bug with complex type annotations.
+
+### ✨ New Features
+
+- **📊 JSON Output Support**: Export tree and signature data as JSON for programmatic use
+  - `pretty-mod tree json -o json` - Get module structure as JSON
+  - `pretty-mod sig json:dumps -o json` - Get function signature as JSON
+  - Perfect for piping to `jq` or other JSON processors
+  - Follows the Kubernetes pattern of `-o <format>` for output selection
+  - Example: `pretty-mod tree json -o json | jq '.tree.submodules | keys'`
+
+### 🏗️ Technical Improvements
+
+- **Visitor Pattern**: Implemented output formatters using the Visitor pattern for extensibility
+  - Clean separation between data structure and formatting
+  - Easy to add new output formats in the future
+  - Type-safe implementation using Rust traits
+
+
+---
+
 # Release Notes - v0.2.0
 
 ## 🎨 Customizable Display & Colors + Enhanced Signature Support
@@ -64,6 +89,10 @@ This release introduces customizable display characters, color output, full type
 
 ### 🐛 Bug Fixes
 
+- **Complex type annotations**: Fixed parameter splitting for nested generics
+  - Previously: `Callable[[Any], str]` would split incorrectly on the comma
+  - Now: Properly handles all nested brackets and quotes in type annotations
+  - Affects all complex types like `Dict[str, List[int]]`, `Literal['a', 'b']`, etc.
 - **Stdlib module handling**: Built-in modules no longer trigger PyPI download attempts
 - **Signature discovery**: Improved recursive search for symbols exported in `__all__`
 - **Download messages**: Colored warning messages for better visibility

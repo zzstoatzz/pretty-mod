@@ -1,4 +1,5 @@
 use crate::module_info::ModuleInfo;
+use crate::tree_formatter::format_tree_display;
 use pyo3::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -116,7 +117,7 @@ impl ModuleTreeExplorer {
         };
 
         // Use the display_tree formatting logic, which expects the wrapped format
-        crate::format_tree_display(py, &tree_obj, &self.root_module_path)
+        format_tree_display(py, &tree_obj, &self.root_module_path)
     }
 }
 
