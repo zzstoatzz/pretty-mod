@@ -3,6 +3,7 @@ mod explorer;
 mod module_info;
 mod output_format;
 mod package_downloader;
+mod semantic;
 mod signature;
 mod stdlib;
 mod tree_formatter;

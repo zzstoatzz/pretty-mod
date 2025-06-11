@@ -1,4 +1,4 @@
-use crate::signature;
+use crate::{signature, semantic};
 use pyo3::prelude::*;
 use ruff_python_ast::{Expr, ExprList, ExprName, Mod, Stmt, StmtAssign};
 use ruff_python_parser::{parse, Mode};
@@ -65,6 +65,15 @@ impl ModuleInfo {
                 "Expected a module",
             ));
         };
+
+        // Try enhanced semantic analysis first
+        let mut analyzer = semantic::SemanticAnalyzer::new();
+        if let Ok(_) = analyzer.analyze_file(file_path) {
+            // Extract signatures using semantic analysis (includes methods!)
+            if let Ok(_) = analyzer.extract_module_info(&mut info) {
+                // Semantic analysis succeeded - we now have method signatures too
+            }
+        }
 
         // Parse AST and collect module information
         // This is only used as a fallback when Python import fails
