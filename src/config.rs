@@ -185,7 +185,7 @@ impl DisplayConfig {
     }
 }
 
-/// Helper to format text with color if enabled
+/// helper to format text with color if enabled
 pub fn colorize(text: &str, color: &str, config: &DisplayConfig) -> String {
     if !config.use_color {
         return text.to_string();
@@ -199,7 +199,7 @@ pub fn colorize(text: &str, color: &str, config: &DisplayConfig) -> String {
     }
 }
 
-/// Parse hex color string to RGB values
+/// parse hex color string to RGB values
 fn parse_hex_color(color: &str) -> Option<(u8, u8, u8)> {
     let color = color.trim_start_matches('#');
     if color.len() != 6 {

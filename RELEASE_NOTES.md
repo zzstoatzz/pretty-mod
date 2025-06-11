@@ -2,7 +2,7 @@
 
 ## 🎨 Customizable Display & Colors
 
-This release introduces customizable display characters and beautiful color output, making `pretty-mod` more visually appealing and adaptable to different terminal environments.
+This release introduces customizable display characters and color output, making `pretty-mod` more visually appealing and adaptable to different terminal environments.
 
 ### 🚨 Breaking Changes
 - **Color output by default**: Tree and signature displays now include ANSI color codes
@@ -10,7 +10,7 @@ This release introduces customizable display characters and beautiful color outp
 
 ### ✨ New Features
 
-- **🎨 Color Support**: Beautiful earth-tone/pastel color scheme
+- **🎨 Color Support**: Earth-tone/pastel color scheme
   - Modules: Saddle brown (#8B7355)
   - Functions: Olive drab (#6B8E23)
   - Classes: Steel blue (#4682B4)

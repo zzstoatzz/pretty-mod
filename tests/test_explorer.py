@@ -1,11 +1,7 @@
-import os
 import sys
 
 import pytest
 from pretty_mod.explorer import ModuleTreeExplorer, display_signature, import_object
-
-# Disable colors for testing
-os.environ["PRETTY_MOD_NO_COLOR"] = "1"
 
 
 class TestModuleTreeExplorer:

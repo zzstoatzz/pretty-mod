@@ -69,13 +69,13 @@ a python module tree explorer for LLMs (and humans)
 └── 📦 utils
 ```
 
-## Installation
+## installation
 
 ```bash
 uv add pretty-mod
 ```
 
-## Usage
+## usage
 
 ```python
 from pretty_mod import display_tree
@@ -161,11 +161,11 @@ pretty-mod tree prefect.server@2.10.0  # ✅ Works
 pretty-mod tree prefect@2.10.0.server  # ❌ Invalid - version must come last
 ```
 
-## Customization
+## customization
 
-Pretty-mod supports extensive customization through environment variables:
+pretty-mod supports extensive customization through environment variables:
 
-### Display Characters
+### display characters
 
 ```bash
 # Use ASCII-only mode for terminals without Unicode support
@@ -177,9 +177,9 @@ PRETTY_MOD_FUNCTION_ICON="fn" pretty-mod tree json
 PRETTY_MOD_CLASS_ICON="cls" pretty-mod tree json
 ```
 
-### Colors
+### colors
 
-Pretty-mod uses a beautiful earth-tone color scheme by default:
+pretty-mod uses an earth-tone color scheme by default:
 
 ```bash
 # Disable colors entirely
@@ -192,7 +192,7 @@ PRETTY_MOD_MODULE_COLOR="#FF6B6B" pretty-mod tree json
 PRETTY_MOD_FUNCTION_COLOR="#4ECDC4" pretty-mod tree json
 ```
 
-Available color environment variables:
+available color environment variables:
 - `PRETTY_MOD_MODULE_COLOR` - Modules/packages (default: #8B7355)
 - `PRETTY_MOD_FUNCTION_COLOR` - Functions (default: #6B8E23)
 - `PRETTY_MOD_CLASS_COLOR` - Classes (default: #4682B4)
@@ -204,11 +204,11 @@ Available color environment variables:
 - `PRETTY_MOD_TYPE_COLOR` - Type annotations (default: #778899)
 - `PRETTY_MOD_DEFAULT_COLOR` - Default values (default: #8FBC8F)
 
-## Examples
+## examples
 
-See the [`examples/`](examples/) directory for more detailed usage patterns and advanced features.
+see the [`examples/`](examples/) directory for more detailed usage patterns and advanced features.
 
-## Development
+## development
 
 ```bash
 gh repo clone zzstoatzz/pretty-mod && cd pretty-mod
