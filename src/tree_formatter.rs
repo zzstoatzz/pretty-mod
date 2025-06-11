@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 use std::collections::HashMap;
+use crate::config::{DisplayConfig, colorize};
 
 /// Format tree display for wrapped format (with api/submodules structure)
 pub fn format_tree_display(
@@ -8,8 +9,12 @@ pub fn format_tree_display(
     module_name: &str,
 ) -> PyResult<String> {
     let tree_dict: HashMap<String, PyObject> = tree.extract(py)?;
+    let config = DisplayConfig::get();
 
-    let mut result = format!("📦 {}\n", module_name);
+    let mut result = format!("{} {}\n", 
+        colorize(&config.module_icon, &config.color_scheme.module_color, config),
+        colorize(module_name, &config.color_scheme.module_color, config)
+    );
 
     // Check if there are submodules
     let has_submodules = tree_dict
@@ -28,7 +33,10 @@ pub fn format_tree_display(
         if let Some(all_exports) = api_dict.get("all") {
             let exports: Vec<String> = all_exports.extract(py)?;
             if !exports.is_empty() {
-                items.push(format!("📜 __all__: {}", exports.join(", ")));
+                items.push(format!("{} __all__: {}", 
+                    colorize(&config.exports_icon, &config.color_scheme.exports_color, config),
+                    exports.join(", ")
+                ));
             }
         }
 
@@ -36,7 +44,10 @@ pub fn format_tree_display(
         if let Some(functions) = api_dict.get("functions") {
             let funcs: Vec<String> = functions.extract(py)?;
             if !funcs.is_empty() {
-                items.push(format!("⚡ functions: {}", funcs.join(", ")));
+                items.push(format!("{} functions: {}", 
+                    colorize(&config.function_icon, &config.color_scheme.function_color, config),
+                    funcs.join(", ")
+                ));
             }
         }
 
@@ -44,7 +55,10 @@ pub fn format_tree_display(
         if let Some(classes) = api_dict.get("classes") {
             let cls: Vec<String> = classes.extract(py)?;
             if !cls.is_empty() {
-                items.push(format!("🔷 classes: {}", cls.join(", ")));
+                items.push(format!("{} classes: {}", 
+                    colorize(&config.class_icon, &config.color_scheme.class_color, config),
+                    cls.join(", ")
+                ));
             }
         }
 
@@ -52,15 +66,21 @@ pub fn format_tree_display(
         if let Some(constants) = api_dict.get("constants") {
             let consts: Vec<String> = constants.extract(py)?;
             if !consts.is_empty() {
-                items.push(format!("📌 constants: {}", consts.join(", ")));
+                items.push(format!("{} constants: {}", 
+                    colorize(&config.constant_icon, &config.color_scheme.constant_color, config),
+                    consts.join(", ")
+                ));
             }
         }
 
         // Print items
         for (i, item) in items.iter().enumerate() {
             let is_last = i == items.len() - 1 && !has_submodules;
-            let prefix = if is_last { "└── " } else { "├── " };
-            result.push_str(&format!("{}{}\n", prefix, item));
+            let prefix = if is_last { &config.tree_last } else { &config.tree_branch };
+            result.push_str(&format!("{}{}\n", 
+                colorize(prefix, &config.color_scheme.tree_color, config),
+                item
+            ));
         }
     }
 
@@ -73,14 +93,18 @@ pub fn format_tree_display(
         if !submod_names.is_empty() {
             for (i, name) in submod_names.iter().enumerate() {
                 let is_last = i == submod_names.len() - 1;
-                let prefix = if is_last { "└── " } else { "├── " };
-                result.push_str(&format!("{}📦 {}\n", prefix, name));
+                let prefix = if is_last { &config.tree_last } else { &config.tree_branch };
+                result.push_str(&format!("{}{} {}\n", 
+                    colorize(prefix, &config.color_scheme.tree_color, config),
+                    colorize(&config.module_icon, &config.color_scheme.module_color, config),
+                    colorize(name, &config.color_scheme.module_color, config)
+                ));
 
                 if let Some(submod_tree) = submods.get(name) {
                     let submod_content = format_tree_recursive(
                         py,
                         submod_tree,
-                        if is_last { "    " } else { "│   " },
+                        if is_last { &config.tree_empty } else { &config.tree_vertical },
                     )?;
                     result.push_str(&submod_content);
                 }
@@ -93,6 +117,7 @@ pub fn format_tree_display(
 
 fn format_tree_recursive(py: Python, tree: &PyObject, prefix: &str) -> PyResult<String> {
     let tree_dict: HashMap<String, PyObject> = tree.extract(py)?;
+    let config = DisplayConfig::get();
 
     let mut result = String::new();
 
@@ -106,7 +131,10 @@ fn format_tree_recursive(py: Python, tree: &PyObject, prefix: &str) -> PyResult<
         if let Some(all_exports) = api_dict.get("all") {
             let exports: Vec<String> = all_exports.extract(py)?;
             if !exports.is_empty() {
-                items.push(format!("📜 __all__: {}", exports.join(", ")));
+                items.push(format!("{} __all__: {}", 
+                    colorize(&config.exports_icon, &config.color_scheme.exports_color, config),
+                    exports.join(", ")
+                ));
             }
         }
 
@@ -114,7 +142,10 @@ fn format_tree_recursive(py: Python, tree: &PyObject, prefix: &str) -> PyResult<
         if let Some(functions) = api_dict.get("functions") {
             let funcs: Vec<String> = functions.extract(py)?;
             if !funcs.is_empty() {
-                items.push(format!("⚡ functions: {}", funcs.join(", ")));
+                items.push(format!("{} functions: {}", 
+                    colorize(&config.function_icon, &config.color_scheme.function_color, config),
+                    funcs.join(", ")
+                ));
             }
         }
 
@@ -122,7 +153,10 @@ fn format_tree_recursive(py: Python, tree: &PyObject, prefix: &str) -> PyResult<
         if let Some(classes) = api_dict.get("classes") {
             let cls: Vec<String> = classes.extract(py)?;
             if !cls.is_empty() {
-                items.push(format!("🔷 classes: {}", cls.join(", ")));
+                items.push(format!("{} classes: {}", 
+                    colorize(&config.class_icon, &config.color_scheme.class_color, config),
+                    cls.join(", ")
+                ));
             }
         }
 
@@ -130,7 +164,10 @@ fn format_tree_recursive(py: Python, tree: &PyObject, prefix: &str) -> PyResult<
         if let Some(constants) = api_dict.get("constants") {
             let consts: Vec<String> = constants.extract(py)?;
             if !consts.is_empty() {
-                items.push(format!("📌 constants: {}", consts.join(", ")));
+                items.push(format!("{} constants: {}", 
+                    colorize(&config.constant_icon, &config.color_scheme.constant_color, config),
+                    consts.join(", ")
+                ));
             }
         }
 
@@ -144,8 +181,11 @@ fn format_tree_recursive(py: Python, tree: &PyObject, prefix: &str) -> PyResult<
         // Print items
         for (i, item) in items.iter().enumerate() {
             let is_last = i == items.len() - 1 && !has_submodules;
-            let item_prefix = if is_last { "└── " } else { "├── " };
-            result.push_str(&format!("{}{}{}\n", prefix, item_prefix, item));
+            let item_prefix = if is_last { &config.tree_last } else { &config.tree_branch };
+            result.push_str(&format!("{}{}{}\n", prefix, 
+                colorize(item_prefix, &config.color_scheme.tree_color, config), 
+                item
+            ));
         }
     }
 
@@ -157,15 +197,19 @@ fn format_tree_recursive(py: Python, tree: &PyObject, prefix: &str) -> PyResult<
 
         for (i, name) in submod_names.iter().enumerate() {
             let is_last = i == submod_names.len() - 1;
-            let submod_prefix = if is_last { "└── " } else { "├── " };
+            let submod_prefix = if is_last { &config.tree_last } else { &config.tree_branch };
 
-            result.push_str(&format!("{}{}📦 {}\n", prefix, submod_prefix, name));
+            result.push_str(&format!("{}{}{} {}\n", prefix, 
+                colorize(submod_prefix, &config.color_scheme.tree_color, config),
+                colorize(&config.module_icon, &config.color_scheme.module_color, config),
+                colorize(name, &config.color_scheme.module_color, config)
+            ));
 
             if let Some(submod_tree) = submods.get(name) {
                 let submod_content = format_tree_recursive(
                     py,
                     submod_tree,
-                    &format!("{}{}", prefix, if is_last { "    " } else { "│   " }),
+                    &format!("{}{}", prefix, if is_last { &config.tree_empty } else { &config.tree_vertical }),
                 )?;
                 result.push_str(&submod_content);
             }

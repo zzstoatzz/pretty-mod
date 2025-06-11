@@ -28,6 +28,28 @@ pub fn parse_package_spec(spec: &str) -> (&str, Option<&str>) {
     }
 }
 
+/// Parse a full module specification with all components
+/// Format: [package::]module[.submodule...][@version]
+/// Returns: (package_override, module_path, version)
+pub fn parse_full_spec(spec: &str) -> (Option<&str>, &str, Option<&str>) {
+    // First extract version from the end
+    let (spec_without_version, version) = if let Some(at_pos) = spec.rfind('@') {
+        let (before, after) = spec.split_at(at_pos);
+        (before, Some(&after[1..]))
+    } else {
+        (spec, None)
+    };
+    
+    // Then parse package::module syntax
+    let (package_override, module_path) = if let Some((package, module)) = spec_without_version.split_once("::") {
+        (Some(package), module)
+    } else {
+        (None, spec_without_version)
+    };
+    
+    (package_override, module_path, version)
+}
+
 /// Extract the base package name from a module path
 /// e.g., "prefect.server.api" -> "prefect"
 pub fn extract_base_package(module_path: &str) -> &str {
@@ -168,23 +190,39 @@ pub fn import_object_with_download(
     import_path: &str,
     quiet: bool,
 ) -> PyResult<PyObject> {
-    // First try normal import
-    match import_object_impl(py, import_path) {
+    // Parse the full specification
+    let (package_override, module_path, version) = parse_full_spec(import_path);
+    
+    // First try normal import with the module path
+    match import_object_impl(py, module_path) {
         Ok(obj) => Ok(obj),
         Err(e) => {
             // Check if it's a module not found error
             let err_str = e.to_string();
             if err_str.contains("No module named") || err_str.contains("ModuleNotFoundError") {
-                // Extract the base module name
-                let base_module = if import_path.contains(':') {
-                    extract_base_package(import_path.split(':').next().unwrap())
+                // Determine which package to download
+                let download_package = if let Some(pkg) = package_override {
+                    // Use the explicit package name
+                    pkg
                 } else {
-                    extract_base_package(import_path)
+                    // Extract the base module name
+                    if module_path.contains(':') {
+                        extract_base_package(module_path.split(':').next().unwrap())
+                    } else {
+                        extract_base_package(module_path)
+                    }
+                };
+
+                // Build download spec with version if present
+                let download_spec = if let Some(v) = version {
+                    format!("{}@{}", download_package, v)
+                } else {
+                    download_package.to_string()
                 };
 
                 // Try downloading and importing
-                try_download_and_import(py, base_module, quiet, || {
-                    import_object_impl(py, import_path)
+                try_download_and_import(py, &download_spec, quiet, || {
+                    import_object_impl(py, module_path)
                 })
             } else {
                 Err(e)

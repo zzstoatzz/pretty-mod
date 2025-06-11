@@ -1,3 +1,4 @@
+mod config;
 mod explorer;
 mod module_info;
 mod package_downloader;
@@ -15,21 +16,21 @@ use pyo3::prelude::*;
 #[pyfunction]
 #[pyo3(signature = (root_module_path, max_depth = 2, quiet = false))]
 fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: bool) -> PyResult<()> {
-    // Check for invalid package name (contains colon)
-    if root_module_path.contains(':') {
+    // Check for invalid single colon (but allow double colon)
+    if root_module_path.contains(':') && !root_module_path.contains("::") {
         return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
             format!("Invalid module path '{}': use 'pretty-mod sig' for exploring specific objects", root_module_path)
         ));
     }
     
-    // Parse package@version syntax
-    let (module_name, _version) = utils::parse_package_spec(root_module_path);
+    // Parse the full specification
+    let (package_override, module_path, version) = utils::parse_full_spec(root_module_path);
     
-    // Remove any PEP 508 version specifiers
-    let module_name = module_name
+    // Remove any PEP 508 version specifiers from module path
+    let module_name = module_path
         .split(&['[', '>', '<', '=', '!'][..])
         .next()
-        .unwrap_or(module_name)
+        .unwrap_or(module_path)
         .trim();
     
     // First check if module can be imported
@@ -53,15 +54,23 @@ fn display_tree(py: Python, root_module_path: &str, max_depth: usize, quiet: boo
             // Check if it's a module not found error
             let err_str = e.to_string();
             if err_str.contains("No module named") || err_str.contains("ModuleNotFoundError") {
-                // Extract the base package name and preserve version spec if present
-                let base_package = extract_base_package(module_name);
-                let download_spec = if let (_, Some(version)) = utils::parse_package_spec(root_module_path) {
-                    format!("{}@{}", base_package, version)
+                // Determine which package to download
+                let download_package = if let Some(pkg) = package_override {
+                    // Use the explicit package name
+                    pkg
                 } else {
-                    base_package.to_string()
+                    // Extract the base package name from module
+                    extract_base_package(module_name)
                 };
                 
-                // Try downloading and importing the base package
+                // Build download spec with version if present
+                let download_spec = if let Some(v) = version {
+                    format!("{}@{}", download_package, v)
+                } else {
+                    download_package.to_string()
+                };
+                
+                // Try downloading and importing the package
                 try_download_and_import(py, &download_spec, quiet, || {
                     // Try exploration again with the full module path
                     let explorer = ModuleTreeExplorer::new(module_name.to_string(), max_depth);
