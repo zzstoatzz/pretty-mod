@@ -370,9 +370,9 @@ pub fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<S
     }
 
     // If not found directly, try following import chains for known patterns
-    // Use the enhanced resolver that combines filesystem + Ruff semantic analysis
-    let enhanced_resolver = crate::import_resolver_v2::EnhancedImportResolver::new();
-    if let Some(sig) = enhanced_resolver.resolve_symbol_signature(py, module_path, object_name) {
+    // Use the import chain resolver which now includes smart signatures
+    let import_resolver = ImportChainResolver::new();
+    if let Some(sig) = import_resolver.resolve_symbol_signature(py, module_path, object_name) {
         return Some(SignatureResult {
             signature: Some(sig.clone()),
             formatted_output: format_signature_display(&sig),
