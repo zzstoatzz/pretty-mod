@@ -3,6 +3,15 @@ use crate::module_info::{FunctionSignature, ModuleInfo};
 use crate::import_resolver::ImportChainResolver;
 use pyo3::prelude::*;
 use ruff_python_ast::{Expr, ParameterWithDefault, Parameters};
+use std::env;
+
+macro_rules! debug_log {
+    ($($arg:tt)*) => {
+        if env::var("PRETTY_MOD_DEBUG").is_ok() {
+            eprintln!("[DEBUG] {}", format!($($arg)*));
+        }
+    };
+}
 
 // ===== AST Parameter Parsing =====
 
@@ -353,7 +362,45 @@ pub fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<S
     // Need to capture the result inside the closure while sys.path is modified
     let mut download_result = None;
     if let Ok(()) = crate::utils::try_download_and_import(py, &download_spec, quiet, || {
+        // Try direct signature first
         download_result = try_get_signature(py);
+        
+        // If not found, try import chain resolver
+        if download_result.is_none() {
+            let resolver = ImportChainResolver::new();
+            if let Some(sig) = resolver.resolve_symbol_signature(py, module_path, object_name) {
+                download_result = Some(sig);
+            }
+        }
+        
+        // Last resort: try to import and inspect the actual object
+        if download_result.is_none() {
+            debug_log!("Trying direct import inspection for {}:{}", module_path, object_name);
+            if let Ok(module) = py.import(module_path) {
+                if let Ok(obj) = module.getattr(object_name) {
+                    // Check if it's callable and has __call__
+                    if obj.is_callable() {
+                        // Try to get the signature from the callable object
+                        if let Ok(inspect) = py.import("inspect") {
+                            if let Ok(sig_obj) = inspect.call_method1("signature", (&obj,)) {
+                                if let Ok(sig_str) = sig_obj.str() {
+                                    // Parse the signature string into our format
+                                    let sig_string = sig_str.to_string();
+                                    debug_log!("Got signature from inspect: {}", sig_string);
+                                    
+                                    // Create a simple signature from the inspect result
+                                    download_result = Some(FunctionSignature {
+                                        name: object_name.to_string(),
+                                        parameters: sig_string.trim_start_matches('(').trim_end_matches(')').to_string(),
+                                        return_type: None, // Could parse from annotations
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         Ok(())
     }) {
         if let Some(sig) = download_result {

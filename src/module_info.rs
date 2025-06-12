@@ -15,6 +15,15 @@ pub struct FunctionSignature {
     pub return_type: Option<String>,
 }
 
+/// Import information tracking where symbols come from
+#[derive(Serialize, Deserialize, Clone, Debug, IntoPyObject)]
+pub struct ImportInfo {
+    pub from_module: Option<String>,  // e.g., ".main" for "from .main import BaseModel"
+    pub import_name: String,          // e.g., "BaseModel"
+    pub as_name: Option<String>,      // e.g., "Model" for "import BaseModel as Model"
+    pub is_relative: bool,            // true for "from .main import"
+}
+
 /// Rust representation of module information
 #[derive(Serialize, Deserialize, Clone, Debug, Default, IntoPyObject)]
 pub struct ModuleInfo {
@@ -25,6 +34,7 @@ pub struct ModuleInfo {
     pub submodules: HashMap<String, ModuleInfo>,
     pub all_exports: Option<Vec<String>>,
     pub signatures: HashMap<String, FunctionSignature>,
+    pub import_map: HashMap<String, ImportInfo>,  // Maps symbol name to where it's imported from
 }
 
 impl ModuleInfo {
@@ -37,6 +47,7 @@ impl ModuleInfo {
             submodules: HashMap::new(),
             all_exports: None,
             signatures: HashMap::new(),
+            import_map: HashMap::new(),
         }
     }
 
@@ -81,7 +92,14 @@ impl ModuleInfo {
         let mut raw_classes = Vec::new();
         let mut raw_constants = Vec::new();
 
-        for stmt in &module.body {
+        // Helper function to process statements recursively
+        fn process_statements(stmts: &[Stmt], info: &mut ModuleInfo, raw_functions: &mut Vec<String>, raw_classes: &mut Vec<String>, raw_constants: &mut Vec<String>) {
+            for stmt in stmts {
+                process_statement(stmt, info, raw_functions, raw_classes, raw_constants);
+            }
+        }
+        
+        fn process_statement(stmt: &Stmt, info: &mut ModuleInfo, raw_functions: &mut Vec<String>, raw_classes: &mut Vec<String>, raw_constants: &mut Vec<String>) {
             match stmt {
                 Stmt::FunctionDef(func_def) => {
                     if !func_def.name.as_str().starts_with('_') {
@@ -159,9 +177,59 @@ impl ModuleInfo {
                         }
                     }
                 }
+                Stmt::Import(import) => {
+                    // Handle "import module" statements
+                    for alias in &import.names {
+                        let import_name = alias.name.as_str().to_string();
+                        let as_name = alias.asname.as_ref().map(|n| n.as_str().to_string());
+                        let final_name = as_name.as_ref().unwrap_or(&import_name);
+                        
+                        info.import_map.insert(
+                            final_name.clone(),
+                            ImportInfo {
+                                from_module: None,
+                                import_name,
+                                as_name,
+                                is_relative: false,
+                            },
+                        );
+                    }
+                }
+                Stmt::ImportFrom(import_from) => {
+                    // Handle "from module import ..." statements
+                    let from_module = import_from.module.as_ref().map(|m| m.to_string());
+                    let is_relative = import_from.level > 0;
+                    
+                    for alias in &import_from.names {
+                        let import_name = alias.name.as_str().to_string();
+                        let as_name = alias.asname.as_ref().map(|n| n.as_str().to_string());
+                        let final_name = as_name.as_ref().unwrap_or(&import_name);
+                        
+                        info.import_map.insert(
+                            final_name.clone(),
+                            ImportInfo {
+                                from_module: from_module.clone(),
+                                import_name,
+                                as_name,
+                                is_relative,
+                            },
+                        );
+                    }
+                }
+                Stmt::If(if_stmt) => {
+                    // Process statements inside if blocks (e.g., if TYPE_CHECKING:)
+                    process_statements(&if_stmt.body, info, raw_functions, raw_classes, raw_constants);
+                    // Process elif and else clauses
+                    for clause in &if_stmt.elif_else_clauses {
+                        process_statements(&clause.body, info, raw_functions, raw_classes, raw_constants);
+                    }
+                }
                 _ => {}
             }
         }
+        
+        // Process all statements in the module
+        process_statements(&module.body, &mut info, &mut raw_functions, &mut raw_classes, &mut raw_constants);
 
         // Apply __all__ filter if present
         if let Some(ref all_exports) = info.all_exports {

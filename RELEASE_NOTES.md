@@ -1,3 +1,53 @@
+# Release Notes - 0.2.3
+
+## 🚀 Import chain resolution rewrite & CLI improvements
+
+this release delivers a complete rewrite of the import chain resolution system, making it more robust and general-purpose while maintaining the intuitive API.
+
+### ✨ major improvements
+
+- **general import chain resolution**: completely rewritten to follow actual import chains instead of hardcoded patterns
+  - tracks imports through `__init__.py` files including those in `if TYPE_CHECKING:` blocks  
+  - recursively follows import chains (e.g., `prefect:flow` → `prefect.main` → `prefect.flows`)
+  - handles relative imports correctly (`.main`, `..utils`, etc.)
+  - falls back to Python's `inspect` module for runtime inspection when static analysis isn't sufficient
+
+- **debug logging system**: added `PRETTY_MOD_DEBUG=1` environment variable for troubleshooting
+  - traces entire import resolution path
+  - shows what modules are explored and what imports are found
+  - invaluable for understanding why a symbol might not be resolving
+
+- **consistent CLI experience**: 
+  - program name always displays as `pretty-mod` regardless of invocation method
+  - added `-q` short flag for `--quiet` to suppress download messages
+
+### 🏗️ technical details
+
+- **ast parser enhancements**: now parses imports inside conditional blocks (`if TYPE_CHECKING:`)
+- **comprehensive rust tests**: added unit tests for import resolution logic
+- **pragmatic fallback**: when static analysis fails, imports and inspects the actual Python object
+- **removed hardcoded patterns**: the system now works for any package, not just known ones
+
+### 📊 examples that still work (and many more!)
+
+```bash
+# these all resolve automatically via import chain following
+uv run pretty-mod sig prefect:flow        # → flow parameters  
+uv run pretty-mod sig fastapi:FastAPI     # → FastAPI.__init__ parameters
+uv run pretty-mod sig pydantic:BaseModel  # → BaseModel.__init__ parameters
+
+# debug import resolution
+PRETTY_MOD_DEBUG=1 uv run pretty-mod sig prefect:flow
+```
+
+### 🐛 fixes
+
+- import resolution now works for packages with complex import patterns
+- handles imports that are instances (like decorators) not just classes/functions
+- correctly resolves symbols through multiple levels of re-exports
+
+---
+
 # Release Notes - 0.2.2
 
 ## 🚀 comprehensive import chain resolution system
