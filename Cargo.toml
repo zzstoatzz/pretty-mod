@@ -25,3 +25,7 @@ zip = "2.2"
 tar = "0.4"
 flate2 = "1.0"
 tempfile = "3.0"
+ty_python_semantic = { git = "https://github.com/astral-sh/ruff" }
+ruff_db = { git = "https://github.com/astral-sh/ruff" }
+salsa = { git = "https://github.com/salsa-rs/salsa.git", rev = "09627e450566f894956710a3fd923dc80462ae6d" }
+anyhow = "1.0"

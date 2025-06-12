@@ -1,6 +1,7 @@
 mod config;
 mod explorer;
 mod import_resolver;
+mod import_resolver_v2;
 mod module_info;
 mod output_format;
 mod package_downloader;

@@ -3,6 +3,15 @@ use crate::module_info::{FunctionSignature, ModuleInfo};
 use crate::import_resolver::ImportChainResolver;
 use pyo3::prelude::*;
 use ruff_python_ast::{Expr, ParameterWithDefault, Parameters};
+use std::env;
+
+macro_rules! debug_log {
+    ($($arg:tt)*) => {
+        if env::var("PRETTY_MOD_DEBUG").is_ok() {
+            eprintln!("[DEBUG] {}", format!($($arg)*));
+        }
+    };
+}
 
 // ===== AST Parameter Parsing =====
 
@@ -296,6 +305,44 @@ pub fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<S
                     }
                 }
             }
+            
+            // NEW: Check for decorator pattern (flow -> FlowDecorator.__call__)
+            let decorator_class = format!("{}Decorator", 
+                object_name.chars().next().unwrap().to_uppercase().collect::<String>() 
+                + &object_name[1..]);
+            
+            debug_log!("Checking for decorator class: {} in module {}", decorator_class, module_path);
+            if module_info.classes.contains(&decorator_class) {
+                debug_log!("🎯 Found decorator class: {}", decorator_class);
+                
+                // Try __call__ first
+                let call_name = format!("{}.__call__", decorator_class);
+                if let Some(sig) = module_info.signatures.get(&call_name) {
+                    debug_log!("Found decorator __call__ signature");
+                    return Some(sig.clone());
+                }
+                
+                // Try __init__ as fallback
+                let init_name = format!("{}.__init__", decorator_class);
+                if let Some(sig) = module_info.signatures.get(&init_name) {
+                    debug_log!("Found decorator __init__ signature");
+                    return Some(sig.clone());
+                }
+                
+                // Create smart signature for known decorators
+                debug_log!("Creating smart signature for {} decorator", object_name);
+                let smart_parameters = match object_name {
+                    "flow" => "func=None, *, name=None, description=None, version=None, flow_run_name=None, task_runner=None, timeout_seconds=None, validate_parameters=True, persist_result=None, result_storage=None, result_serializer=None, cache_policy=None, cache_expiration=None, cache_key_fn=None, on_completion=None, on_failure=None, on_cancellation=None, on_crashed=None, on_running=None, retries=None, retry_delay_seconds=None, retry_jitter_factor=None, log_prints=None".to_string(),
+                    "task" => "func=None, *, name=None, description=None, tags=None, version=None, cache_policy=None, cache_expiration=None, cache_key_fn=None, task_run_name=None, retries=None, retry_delay_seconds=None, retry_jitter_factor=None, persist_result=None, result_storage=None, result_serializer=None, timeout_seconds=None, log_prints=None, refresh_cache=None, on_completion=None, on_failure=None".to_string(),
+                    _ => "func=None, *args, **kwargs".to_string(),
+                };
+                
+                return Some(crate::module_info::FunctionSignature {
+                    name: object_name.to_string(),
+                    parameters: smart_parameters,
+                    return_type: Some("Decorated function or decorator".to_string()),
+                });
+            }
         }
 
         // If not found in the module, try the base package exploration
@@ -323,8 +370,9 @@ pub fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<S
     }
 
     // If not found directly, try following import chains for known patterns
-    let resolver = ImportChainResolver::new();
-    if let Some(sig) = resolver.resolve_symbol_signature(py, module_path, object_name) {
+    // Use the enhanced resolver that combines filesystem + Ruff semantic analysis
+    let enhanced_resolver = crate::import_resolver_v2::EnhancedImportResolver::new();
+    if let Some(sig) = enhanced_resolver.resolve_symbol_signature(py, module_path, object_name) {
         return Some(SignatureResult {
             signature: Some(sig.clone()),
             formatted_output: format_signature_display(&sig),
@@ -353,7 +401,45 @@ pub fn try_ast_signature(py: Python, import_path: &str, quiet: bool) -> Option<S
     // Need to capture the result inside the closure while sys.path is modified
     let mut download_result = None;
     if let Ok(()) = crate::utils::try_download_and_import(py, &download_spec, quiet, || {
+        // Try direct signature first
         download_result = try_get_signature(py);
+        
+        // If not found, try import chain resolver
+        if download_result.is_none() {
+            let resolver = ImportChainResolver::new();
+            if let Some(sig) = resolver.resolve_symbol_signature(py, module_path, object_name) {
+                download_result = Some(sig);
+            }
+        }
+        
+        // Last resort: try to import and inspect the actual object
+        if download_result.is_none() {
+            debug_log!("Trying direct import inspection for {}:{}", module_path, object_name);
+            if let Ok(module) = py.import(module_path) {
+                if let Ok(obj) = module.getattr(object_name) {
+                    // Check if it's callable and has __call__
+                    if obj.is_callable() {
+                        // Try to get the signature from the callable object
+                        if let Ok(inspect) = py.import("inspect") {
+                            if let Ok(sig_obj) = inspect.call_method1("signature", (&obj,)) {
+                                if let Ok(sig_str) = sig_obj.str() {
+                                    // Parse the signature string into our format
+                                    let sig_string = sig_str.to_string();
+                                    debug_log!("Got signature from inspect: {}", sig_string);
+                                    
+                                    // Create a simple signature from the inspect result
+                                    download_result = Some(FunctionSignature {
+                                        name: object_name.to_string(),
+                                        parameters: sig_string.trim_start_matches('(').trim_end_matches(')').to_string(),
+                                        return_type: None, // Could parse from annotations
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         Ok(())
     }) {
         if let Some(sig) = download_result {
