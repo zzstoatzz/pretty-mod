@@ -18,9 +18,9 @@ class TestImportChainResolution:
         assert "Parameters:" in result
 
         # Should have common flow parameters
-        assert "name:" in result or "name =" in result
-        assert "description:" in result or "description =" in result
-        assert "retries:" in result or "retries =" in result
+        assert "name=None" in result
+        assert "description=None" in result
+        assert "retries=None" in result
 
     def test_fastapi_fastapi_resolution(self):
         """Test that fastapi:FastAPI resolves to the FastAPI.__init__ signature."""
